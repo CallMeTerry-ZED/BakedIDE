@@ -81,6 +81,14 @@
             border-bottom: 2px solid #007acc;
         }
 
+        .tab.dragging {
+            opacity: 0.5;
+        }
+
+        .tab-drag-over {
+            border-left: 2px solid #007acc;
+        }
+
         .tab-close {
             padding: 2px 6px;
             border-radius: 3px;
@@ -98,10 +106,223 @@
             overflow: hidden;
         }
 
+        /* File tree sidebar */
+        #file-tree-sidebar {
+            width: 250px;
+            min-width: 150px;
+            max-width: 600px;
+            background-color: #252526;
+            border-right: 1px solid #3e3e42;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: none;
+            position: relative;
+        }
+
+        #file-tree-sidebar.visible {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar-resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            cursor: col-resize;
+            background-color: transparent;
+            z-index: 10;
+        }
+
+        #sidebar-resizer:hover {
+            background-color: #007acc;
+        }
+
+        #sidebar-resizer.resizing {
+            background-color: #007acc;
+        }
+
+        #file-tree-header {
+            padding: 8px 12px;
+            background-color: #2d2d30;
+            border-bottom: 1px solid #3e3e42;
+            font-weight: bold;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        #file-tree {
+            padding: 4px 0;
+            display: block;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
+        .tree-item {
+            padding: 0;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            flex-shrink: 0;
+        }
+        
+        /* Row container for icon and label */
+        .tree-item-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            width: 100%;
+        }
+
+        /* Use JavaScript-managed hover class instead of :hover to prevent parent highlighting */
+        .tree-item.hovering .tree-item-row {
+            background-color: #2a2d2e;
+        }
+
+        .tree-item.selected .tree-item-row {
+            background-color: #094771;
+        }
+
+        .tree-item.dragging {
+            opacity: 0.5;
+        }
+
+        .tree-item.drag-over {
+            background-color: #094771;
+            border: 1px dashed #007acc;
+        }
+
+        .tree-icon {
+            width: 16px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .tree-item.folder .tree-icon::before {
+            content: '▶';
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+
+        .tree-item.folder.expanded .tree-icon::before {
+            transform: rotate(90deg);
+        }
+
+        .tree-item.file .tree-icon::before {
+            content: '📄';
+            display: inline-block;
+        }
+        
+        /* Ensure files don't get folder styling */
+        .tree-item.file .tree-icon::before {
+            transform: none !important;
+        }
+
+        /* Ensure children are visually nested and stack vertically */
+        .tree-children {
+            display: none;
+            margin-left: 0;
+            padding-left: 0;
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .tree-item.expanded > .tree-children {
+            display: flex;
+            flex-direction: column;
+        }
+
+
+        /* Prompt dialog */
+        #prompt-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            padding: 20px;
+            min-width: 300px;
+            z-index: 10001;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+
+        #prompt-dialog.visible {
+            display: block;
+        }
+
+        #prompt-dialog-title {
+            color: #cccccc;
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        #prompt-dialog-input {
+            width: 100%;
+            padding: 8px;
+            background-color: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 2px;
+            color: #cccccc;
+            font-size: 13px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        #prompt-dialog-input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        #prompt-dialog-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .prompt-button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .prompt-button-primary {
+            background-color: #007acc;
+            color: #ffffff;
+        }
+
+        .prompt-button-primary:hover {
+            background-color: #005a9e;
+        }
+
+        .prompt-button-secondary {
+            background-color: #3e3e42;
+            color: #cccccc;
+        }
+
+        .prompt-button-secondary:hover {
+            background-color: #4e4e52;
+        }
+
         #editor-container {
             flex: 1;
             width: 100%;
+            height: 100%;
             overflow: hidden;
+            position: relative;
         }
 
         /* Status bar at bottom */
@@ -133,6 +354,14 @@
 
         <!-- Editor area -->
         <div id="editor-area">
+            <!-- File tree sidebar -->
+            <div id="file-tree-sidebar">
+                <div id="file-tree-header">Explorer</div>
+                <div id="file-tree"></div>
+                <div id="sidebar-resizer"></div>
+            </div>
+            
+            <!-- Editor container -->
             <div id="editor-container"></div>
         </div>
 
@@ -141,9 +370,20 @@
             <span id="status-text">BakedIDE</span>
         </div>
     </div>
+    
+    <!-- Prompt Dialog -->
+    <div id="prompt-dialog">
+        <div id="prompt-dialog-title"></div>
+        <input type="text" id="prompt-dialog-input" />
+        <div id="prompt-dialog-buttons">
+            <button class="prompt-button prompt-button-secondary" id="prompt-cancel">Cancel</button>
+            <button class="prompt-button prompt-button-primary" id="prompt-ok">OK</button>
+        </div>
+    </div>
 
     <!-- Load Monaco Editor -->
     <script src="../../node_modules/monaco-editor/min/vs/loader.js"></script>
+    <script src="./fileTree.js"></script>
     <script src="./editor.js"></script>
 </body>
 </html>

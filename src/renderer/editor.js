@@ -4,6 +4,13 @@ let activeEditor = null;
 let activeFilePath = null;
 let fileTabs = []; // Array of { filePath, fileName, editor }
 
+// Expose editor functions globally for fileTree.js
+window.editorAPI = {
+  createEditorTab: null,
+  setActiveTab: null,
+  fileTabs: () => fileTabs
+};
+
 // Configure Monaco loader
 require.config({ paths: { vs: '../../node_modules/monaco-editor/min/vs' } });
 
@@ -54,6 +61,10 @@ function initializeApp() {
   setupMenus();
   createNewFile();
   setupKeyboardShortcuts();
+  
+  // Expose editor functions for fileTree.js
+  window.editorAPI.createEditorTab = createEditorTab;
+  window.editorAPI.setActiveTab = setActiveTab;
 }
 
 let fileMenuDropdown = null;
@@ -115,6 +126,7 @@ function showFileMenu(menuElement) {
   const menuItems = [
     { label: 'New File', action: () => { createNewFile(); hideFileMenu(); }, shortcut: 'Ctrl+N' },
     { label: 'Open File...', action: () => { openFile(); hideFileMenu(); }, shortcut: 'Ctrl+O' },
+    { label: 'Open Folder...', action: () => { if (window.fileTreeAPI) window.fileTreeAPI.openFolder(); hideFileMenu(); }, shortcut: 'Ctrl+K Ctrl+O' },
     { label: '---' },
     { label: 'Save', action: () => { saveCurrentFile(); hideFileMenu(); }, shortcut: 'Ctrl+S' },
     { label: 'Save As...', action: () => { saveFileAs(); hideFileMenu(); }, shortcut: 'Ctrl+Shift+S' },
@@ -319,6 +331,11 @@ function createEditorTab(filePath, fileName, content) {
   editorDiv.style.width = '100%';
   editorDiv.style.height = '100%';
   editorDiv.style.display = activeEditor ? 'none' : 'block';
+  editorDiv.style.position = 'absolute';
+  editorDiv.style.top = '0';
+  editorDiv.style.left = '0';
+  editorDiv.style.right = '0';
+  editorDiv.style.bottom = '0';
   container.appendChild(editorDiv);
   
   // Detect language from file extension
@@ -391,6 +408,68 @@ function createTabElement(tabInfo) {
   tab.appendChild(fileNameSpan);
   tab.appendChild(closeBtn);
   
+  // Make tab draggable
+  tab.draggable = true;
+  tab.addEventListener('dragstart', (e) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tabInfo.editorId);
+    tab.classList.add('dragging');
+  });
+  
+  tab.addEventListener('dragend', (e) => {
+    tab.classList.remove('dragging');
+    document.querySelectorAll('.tab-drag-over').forEach(el => {
+      el.classList.remove('tab-drag-over');
+    });
+  });
+  
+  tab.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const afterElement = getDragAfterElement(tabsContainer, e.clientX);
+    const dragging = document.querySelector('.tab.dragging');
+    if (afterElement == null) {
+      tabsContainer.appendChild(dragging);
+    } else {
+      tabsContainer.insertBefore(dragging, afterElement);
+    }
+  });
+  
+  tab.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    if (!tab.classList.contains('dragging')) {
+      tab.classList.add('tab-drag-over');
+    }
+  });
+  
+  tab.addEventListener('dragleave', (e) => {
+    tab.classList.remove('tab-drag-over');
+  });
+  
+  tab.addEventListener('drop', (e) => {
+    e.preventDefault();
+    tab.classList.remove('tab-drag-over');
+    const draggedId = e.dataTransfer.getData('text/plain');
+    const draggedTab = fileTabs.find(t => t.editorId === draggedId);
+    const draggedTabElement = draggedTab.tabElement;
+    
+    if (draggedTabElement !== tab) {
+      const tabs = Array.from(tabsContainer.children);
+      const draggedIndex = tabs.indexOf(draggedTabElement);
+      const targetIndex = tabs.indexOf(tab);
+      
+      // Reorder tabs array
+      fileTabs.splice(targetIndex, 0, fileTabs.splice(draggedIndex, 1)[0]);
+      
+      // Reorder DOM
+      if (targetIndex > draggedIndex) {
+        tabsContainer.insertBefore(draggedTabElement, tab.nextSibling);
+      } else {
+        tabsContainer.insertBefore(draggedTabElement, tab);
+      }
+    }
+  });
+  
   tab.addEventListener('click', (e) => {
     if (e.target === closeBtn || e.target.parentElement === closeBtn) {
       closeTab(tabInfo);
@@ -401,6 +480,21 @@ function createTabElement(tabInfo) {
   
   tabsContainer.appendChild(tab);
   tabInfo.tabElement = tab;
+}
+
+function getDragAfterElement(container, x) {
+  const draggableElements = [...container.querySelectorAll('.tab:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = x - box.left - box.width / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 function setActiveTab(tabInfo) {
