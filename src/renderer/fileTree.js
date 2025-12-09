@@ -34,7 +34,8 @@ async function openFolder() {
   if (result && result.success) {
     currentProjectPath = result.folderPath;
     await loadFileTree(result.folderPath);
-    document.getElementById('file-tree-sidebar').classList.add('visible');
+    const sidebar = document.getElementById('file-tree-sidebar');
+    sidebar.classList.add('visible');
   }
 }
 

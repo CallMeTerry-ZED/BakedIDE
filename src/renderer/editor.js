@@ -68,7 +68,14 @@ function initializeApp() {
 }
 
 let fileMenuDropdown = null;
+let editMenuDropdown = null;
+let viewMenuDropdown = null;
 let helpMenuDropdown = null;
+
+// View state
+let sidebarVisible = false;
+let statusBarVisible = true;
+let currentZoom = 0; // 0 = 100%, positive = zoomed in, negative = zoomed out
 
 function setupMenus() {
   const fileMenu = document.getElementById('file-menu');
@@ -78,23 +85,41 @@ function setupMenus() {
     showFileMenu(e.target);
   });
 
+  document.getElementById('edit-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    showEditMenu(e.target);
+  });
+
+  document.getElementById('view-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    showViewMenu(e.target);
+  });
+
   document.getElementById('help-menu').addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     showHelpMenu(e.target);
   });
   
-  ['edit-menu', 'view-menu', 'window-menu'].forEach(menuId => {
-    document.getElementById(menuId).addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
+  document.getElementById('window-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
   });
   
   document.addEventListener('click', (e) => {
     const fileMenu = document.getElementById('file-menu');
+    const editMenu = document.getElementById('edit-menu');
+    const viewMenu = document.getElementById('view-menu');
     const helpMenu = document.getElementById('help-menu');
     if (fileMenuDropdown && !fileMenuDropdown.contains(e.target) && !fileMenu.contains(e.target)) {
       hideFileMenu();
+    }
+    if (editMenuDropdown && !editMenuDropdown.contains(e.target) && !editMenu.contains(e.target)) {
+      hideEditMenu();
+    }
+    if (viewMenuDropdown && !viewMenuDropdown.contains(e.target) && !viewMenu.contains(e.target)) {
+      hideViewMenu();
     }
     if (helpMenuDropdown && !helpMenuDropdown.contains(e.target) && !helpMenu.contains(e.target)) {
       hideHelpMenu();
@@ -187,6 +212,289 @@ function hideFileMenu() {
     fileMenuDropdown.remove();
     fileMenuDropdown = null;
   }
+}
+
+function showEditMenu(menuElement) {
+  hideEditMenu();
+  
+  editMenuDropdown = document.createElement('div');
+  editMenuDropdown.id = 'edit-menu-dropdown';
+  editMenuDropdown.style.cssText = `
+    position: absolute;
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 10000;
+    min-width: 200px;
+    padding: 4px 0;
+  `;
+  
+  editMenuDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+  
+  const menuItems = [
+    { label: 'Undo', action: () => { executeEditorCommand('undo'); hideEditMenu(); }, shortcut: 'Ctrl+Z', enabled: () => activeEditor && activeEditor.getModel().canUndo() },
+    { label: 'Redo', action: () => { executeEditorCommand('redo'); hideEditMenu(); }, shortcut: 'Ctrl+Y', enabled: () => activeEditor && activeEditor.getModel().canRedo() },
+    { label: '---' },
+    { label: 'Cut', action: () => { executeEditorCommand('editor.action.clipboardCutAction'); hideEditMenu(); }, shortcut: 'Ctrl+X', enabled: () => activeEditor && activeEditor.hasTextFocus() },
+    { label: 'Copy', action: () => { executeEditorCommand('editor.action.clipboardCopyAction'); hideEditMenu(); }, shortcut: 'Ctrl+C', enabled: () => activeEditor && activeEditor.hasTextFocus() },
+    { label: 'Paste', action: () => { executeEditorCommand('editor.action.clipboardPasteAction'); hideEditMenu(); }, shortcut: 'Ctrl+V', enabled: () => activeEditor && activeEditor.hasTextFocus() },
+    { label: '---' },
+    { label: 'Select All', action: () => { executeEditorCommand('editor.action.selectAll'); hideEditMenu(); }, shortcut: 'Ctrl+A', enabled: () => activeEditor !== null },
+    { label: '---' },
+    { label: 'Find', action: () => { executeEditorCommand('actions.find'); hideEditMenu(); }, shortcut: 'Ctrl+F', enabled: () => activeEditor !== null },
+    { label: 'Replace', action: () => { executeEditorCommand('editor.action.startFindReplaceAction'); hideEditMenu(); }, shortcut: 'Ctrl+H', enabled: () => activeEditor !== null },
+  ];
+  
+  menuItems.forEach(item => {
+    if (item.label === '---') {
+      const separator = document.createElement('div');
+      separator.style.cssText = 'height: 1px; background-color: #3e3e42; margin: 4px 0;';
+      editMenuDropdown.appendChild(separator);
+    } else {
+      const menuItem = document.createElement('div');
+      const isEnabled = item.enabled ? item.enabled() : true;
+      
+      menuItem.style.cssText = `
+        padding: 6px 20px 6px 12px;
+        cursor: ${isEnabled ? 'pointer' : 'default'};
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: ${isEnabled ? '#cccccc' : '#666666'};
+      `;
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = item.label;
+      menuItem.appendChild(labelSpan);
+      
+      if (item.shortcut) {
+        const shortcut = document.createElement('span');
+        shortcut.textContent = item.shortcut;
+        shortcut.style.cssText = 'color: #858585; font-size: 11px; margin-left: 20px;';
+        menuItem.appendChild(shortcut);
+      }
+      
+      if (isEnabled) {
+        menuItem.addEventListener('mouseenter', () => {
+          menuItem.style.backgroundColor = '#37373d';
+        });
+        menuItem.addEventListener('mouseleave', () => {
+          menuItem.style.backgroundColor = 'transparent';
+        });
+        menuItem.addEventListener('click', (e) => {
+          e.stopPropagation();
+          item.action();
+        });
+      }
+      
+      editMenuDropdown.appendChild(menuItem);
+    }
+  });
+  
+  const rect = menuElement.getBoundingClientRect();
+  editMenuDropdown.style.top = `${rect.bottom + 2}px`;
+  editMenuDropdown.style.left = `${rect.left}px`;
+  
+  document.body.appendChild(editMenuDropdown);
+}
+
+function hideEditMenu() {
+  if (editMenuDropdown) {
+    editMenuDropdown.remove();
+    editMenuDropdown = null;
+  }
+}
+
+function showViewMenu(menuElement) {
+  hideViewMenu();
+  
+  // Update state from DOM
+  const sidebar = document.getElementById('file-tree-sidebar');
+  const statusBar = document.getElementById('status-bar');
+  sidebarVisible = sidebar.classList.contains('visible');
+  statusBarVisible = statusBar.style.display !== 'none';
+  
+  viewMenuDropdown = document.createElement('div');
+  viewMenuDropdown.id = 'view-menu-dropdown';
+  viewMenuDropdown.style.cssText = `
+    position: absolute;
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 10000;
+    min-width: 200px;
+    padding: 4px 0;
+  `;
+  
+  viewMenuDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+  
+  // Check current editor settings
+  const wordWrapEnabled = activeEditor ? activeEditor.getOption(monaco.editor.EditorOption.wordWrap) === 'on' : true;
+  const minimapEnabled = activeEditor ? activeEditor.getOption(monaco.editor.EditorOption.minimap).enabled : true;
+  
+  const menuItems = [
+    { label: 'Explorer', action: () => { toggleSidebar(); hideViewMenu(); }, shortcut: 'Ctrl+Shift+E', checked: sidebarVisible },
+    { label: 'Status Bar', action: () => { toggleStatusBar(); hideViewMenu(); }, checked: statusBarVisible },
+    { label: '---' },
+    { label: 'Zoom In', action: () => { zoomIn(); hideViewMenu(); }, shortcut: 'Ctrl+=' },
+    { label: 'Zoom Out', action: () => { zoomOut(); hideViewMenu(); }, shortcut: 'Ctrl+-' },
+    { label: 'Reset Zoom', action: () => { resetZoom(); hideViewMenu(); }, shortcut: 'Ctrl+0' },
+    { label: '---' },
+    { label: 'Word Wrap', action: () => { toggleWordWrap(); hideViewMenu(); }, checked: wordWrapEnabled },
+    { label: 'Minimap', action: () => { toggleMinimap(); hideViewMenu(); }, checked: minimapEnabled },
+  ];
+  
+  menuItems.forEach(item => {
+    if (item.label === '---') {
+      const separator = document.createElement('div');
+      separator.style.cssText = 'height: 1px; background-color: #3e3e42; margin: 4px 0;';
+      viewMenuDropdown.appendChild(separator);
+    } else {
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        padding: 6px 20px 6px 12px;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      `;
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = item.label;
+      menuItem.appendChild(labelSpan);
+      
+      if (item.shortcut) {
+        const shortcut = document.createElement('span');
+        shortcut.textContent = item.shortcut;
+        shortcut.style.cssText = 'color: #858585; font-size: 11px; margin-left: 20px;';
+        menuItem.appendChild(shortcut);
+      } else if (item.checked !== undefined) {
+        const checkmark = document.createElement('span');
+        checkmark.textContent = item.checked ? '✓' : '';
+        checkmark.style.cssText = 'color: #007acc; font-size: 12px; margin-left: 20px;';
+        menuItem.appendChild(checkmark);
+      }
+      
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.backgroundColor = '#37373d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.backgroundColor = 'transparent';
+      });
+      menuItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.action();
+      });
+      
+      viewMenuDropdown.appendChild(menuItem);
+    }
+  });
+  
+  const rect = menuElement.getBoundingClientRect();
+  viewMenuDropdown.style.top = `${rect.bottom + 2}px`;
+  viewMenuDropdown.style.left = `${rect.left}px`;
+  
+  document.body.appendChild(viewMenuDropdown);
+}
+
+function hideViewMenu() {
+  if (viewMenuDropdown) {
+    viewMenuDropdown.remove();
+    viewMenuDropdown = null;
+  }
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('file-tree-sidebar');
+  const isVisible = sidebar.classList.contains('visible');
+  sidebarVisible = !isVisible;
+  if (sidebarVisible) {
+    sidebar.classList.add('visible');
+  } else {
+    sidebar.classList.remove('visible');
+  }
+}
+
+function toggleStatusBar() {
+  const statusBar = document.getElementById('status-bar');
+  statusBarVisible = !statusBarVisible;
+  if (statusBarVisible) {
+    statusBar.style.display = 'flex';
+  } else {
+    statusBar.style.display = 'none';
+  }
+}
+
+function zoomIn() {
+  if (!activeEditor) return;
+  currentZoom = Math.min(currentZoom + 1, 5); // Max zoom level
+  const newFontSize = 14 + (currentZoom * 2);
+  activeEditor.updateOptions({ fontSize: newFontSize });
+  // Apply to all editors
+  editors.forEach(editor => {
+    editor.updateOptions({ fontSize: newFontSize });
+  });
+}
+
+function zoomOut() {
+  if (!activeEditor) return;
+  currentZoom = Math.max(currentZoom - 1, -5); // Min zoom level
+  const newFontSize = 14 + (currentZoom * 2);
+  activeEditor.updateOptions({ fontSize: newFontSize });
+  // Apply to all editors
+  editors.forEach(editor => {
+    editor.updateOptions({ fontSize: newFontSize });
+  });
+}
+
+function resetZoom() {
+  if (!activeEditor) return;
+  currentZoom = 0;
+  activeEditor.updateOptions({ fontSize: 14 });
+  // Apply to all editors
+  editors.forEach(editor => {
+    editor.updateOptions({ fontSize: 14 });
+  });
+}
+
+function toggleWordWrap() {
+  if (!activeEditor) return;
+  const currentWrap = activeEditor.getOption(monaco.editor.EditorOption.wordWrap);
+  const newWrap = currentWrap === 'on' ? 'off' : 'on';
+  activeEditor.updateOptions({ wordWrap: newWrap });
+  // Apply to all editors
+  editors.forEach(editor => {
+    editor.updateOptions({ wordWrap: newWrap });
+  });
+}
+
+function toggleMinimap() {
+  if (!activeEditor) return;
+  const currentMinimap = activeEditor.getOption(monaco.editor.EditorOption.minimap).enabled;
+  const newMinimap = !currentMinimap;
+  activeEditor.updateOptions({ minimap: { enabled: newMinimap } });
+  // Apply to all editors
+  editors.forEach(editor => {
+    editor.updateOptions({ minimap: { enabled: newMinimap } });
+  });
+}
+
+function executeEditorCommand(command) {
+  if (!activeEditor) {
+    return;
+  }
+  
+  // Focus the editor first
+  activeEditor.focus();
+  
+  // Execute the command
+  activeEditor.trigger('keyboard', command, null);
 }
 
 function showHelpMenu(menuElement) {
@@ -293,6 +601,7 @@ function setupKeyboardShortcuts() {
   }
   
   document.addEventListener('keydown', (e) => {
+    // File operations
     if (e.ctrlKey && e.key === 'n' && !e.shiftKey) {
       e.preventDefault();
       createNewFile();
@@ -305,6 +614,28 @@ function setupKeyboardShortcuts() {
     } else if (e.ctrlKey && e.shiftKey && e.key === 'S') {
       e.preventDefault();
       saveFileAs();
+    }
+    // Edit operations - Monaco handles these natively, but we can add fallbacks
+    else if (e.ctrlKey && e.key === 'f' && !e.shiftKey) {
+      // Find - Monaco handles this natively
+    } else if (e.ctrlKey && e.key === 'h' && !e.shiftKey) {
+      // Replace - Monaco handles this natively
+    } else if (e.ctrlKey && e.key === 'a' && !e.shiftKey) {
+      // Select All - Monaco handles this natively
+    }
+    // View operations
+    else if (e.ctrlKey && e.shiftKey && e.key === 'E') {
+      e.preventDefault();
+      toggleSidebar();
+    } else if (e.ctrlKey && e.key === '=') {
+      e.preventDefault();
+      zoomIn();
+    } else if (e.ctrlKey && e.key === '-' || (e.ctrlKey && e.key === '_')) {
+      e.preventDefault();
+      zoomOut();
+    } else if (e.ctrlKey && e.key === '0') {
+      e.preventDefault();
+      resetZoom();
     }
   });
 }
