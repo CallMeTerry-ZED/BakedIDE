@@ -1,6 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
+const { promisify } = require('util');
 
 let mainWindow;
 
@@ -115,6 +116,111 @@ ipcMain.handle('file:read', async (event, filePath) => {
   } catch (error) {
     return { success: false, error: error.message };
   }
+});
+
+ipcMain.handle('dialog:openFolder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory']
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    return { success: true, folderPath: result.filePaths[0] };
+  }
+  
+  return { success: false, canceled: true };
+});
+
+ipcMain.handle('dir:read', async (event, dirPath) => {
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const items = [];
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      items.push({
+        name: entry.name,
+        path: fullPath,
+        isDirectory: entry.isDirectory(),
+        isFile: entry.isFile()
+      });
+    }
+    
+    return { success: true, items };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('file:create', async (event, parentPath, fileName) => {
+  try {
+    const filePath = path.join(parentPath, fileName);
+    await fs.writeFile(filePath, '', 'utf-8');
+    return { success: true, filePath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('folder:create', async (event, parentPath, folderName) => {
+  try {
+    const folderPath = path.join(parentPath, folderName);
+    await fs.mkdir(folderPath, { recursive: true });
+    return { success: true, folderPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('item:delete', async (event, itemPath, isDirectory) => {
+  try {
+    if (isDirectory) {
+      await fs.rmdir(itemPath, { recursive: true });
+    } else {
+      await fs.unlink(itemPath);
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('item:move', async (event, sourcePath, targetPath, itemName, isDirectory) => {
+  try {
+    const newPath = path.join(targetPath, itemName);
+    
+    // Check if target already exists
+    try {
+      await fs.access(newPath);
+      return { success: false, error: 'Item with that name already exists' };
+    } catch {
+      // File doesn't exist, proceed
+    }
+    
+    // Move the item
+    await fs.rename(sourcePath, newPath);
+    return { success: true, newPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('dialog:prompt', async (event, title, defaultValue) => {
+  // This is handled by the renderer's custom prompt dialog
+  // We'll just return null here as the renderer handles it directly
+  return null;
+});
+
+ipcMain.handle('dialog:confirm', async (event, title, message) => {
+  const result = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    buttons: ['Yes', 'No'],
+    defaultId: 1,
+    title: title,
+    message: title,
+    detail: message
+  });
+  
+  return result.response === 0;
 });
 
 ipcMain.handle('theme:load', async () => {
