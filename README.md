@@ -28,3 +28,7 @@ npm run dev
 **Production Mode:**
 
 npm start
+
+## COPYRIGHT
+
+Copyright (c) 2025 ZED Interactive. All Rights Reserved.
