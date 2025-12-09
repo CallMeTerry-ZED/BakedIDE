@@ -70,6 +70,7 @@ function initializeApp() {
 let fileMenuDropdown = null;
 let editMenuDropdown = null;
 let viewMenuDropdown = null;
+let windowMenuDropdown = null;
 let helpMenuDropdown = null;
 
 // View state
@@ -97,20 +98,23 @@ function setupMenus() {
     showViewMenu(e.target);
   });
 
+  document.getElementById('window-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    showWindowMenu(e.target);
+  });
+
   document.getElementById('help-menu').addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     showHelpMenu(e.target);
   });
   
-  document.getElementById('window-menu').addEventListener('click', (e) => {
-    e.stopPropagation();
-  });
-  
   document.addEventListener('click', (e) => {
     const fileMenu = document.getElementById('file-menu');
     const editMenu = document.getElementById('edit-menu');
     const viewMenu = document.getElementById('view-menu');
+    const windowMenu = document.getElementById('window-menu');
     const helpMenu = document.getElementById('help-menu');
     if (fileMenuDropdown && !fileMenuDropdown.contains(e.target) && !fileMenu.contains(e.target)) {
       hideFileMenu();
@@ -120,6 +124,9 @@ function setupMenus() {
     }
     if (viewMenuDropdown && !viewMenuDropdown.contains(e.target) && !viewMenu.contains(e.target)) {
       hideViewMenu();
+    }
+    if (windowMenuDropdown && !windowMenuDropdown.contains(e.target) && !windowMenu.contains(e.target)) {
+      hideWindowMenu();
     }
     if (helpMenuDropdown && !helpMenuDropdown.contains(e.target) && !helpMenu.contains(e.target)) {
       hideHelpMenu();
@@ -408,6 +415,147 @@ function hideViewMenu() {
     viewMenuDropdown.remove();
     viewMenuDropdown = null;
   }
+}
+
+function showWindowMenu(menuElement) {
+  hideWindowMenu();
+  
+  windowMenuDropdown = document.createElement('div');
+  windowMenuDropdown.id = 'window-menu-dropdown';
+  windowMenuDropdown.style.cssText = `
+    position: absolute;
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 10000;
+    min-width: 200px;
+    padding: 4px 0;
+  `;
+  
+  windowMenuDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+  
+  const menuItems = [
+    { label: 'New Window', action: () => { createNewWindow(); hideWindowMenu(); }, shortcut: 'Ctrl+Shift+N' },
+    { label: 'Close Editor', action: () => { closeCurrentEditor(); hideWindowMenu(); }, shortcut: 'Ctrl+W', enabled: () => activeEditor !== null },
+    { label: '---' },
+    { label: 'Split Editor Right', action: () => { splitEditor('vertical'); hideWindowMenu(); }, shortcut: 'Ctrl+\\', enabled: () => activeEditor !== null },
+    { label: 'Split Editor Down', action: () => { splitEditor('horizontal'); hideWindowMenu(); }, shortcut: 'Ctrl+K Ctrl+\\', enabled: () => activeEditor !== null },
+    { label: 'Close Editor Group', action: () => { closeEditorGroup(); hideWindowMenu(); }, enabled: () => activeEditor !== null },
+    { label: '---' },
+    { label: 'Close All Editors', action: () => { closeAllEditors(); hideWindowMenu(); }, enabled: () => fileTabs.length > 0 },
+  ];
+  
+  menuItems.forEach(item => {
+    if (item.label === '---') {
+      const separator = document.createElement('div');
+      separator.style.cssText = 'height: 1px; background-color: #3e3e42; margin: 4px 0;';
+      windowMenuDropdown.appendChild(separator);
+    } else {
+      const menuItem = document.createElement('div');
+      const isEnabled = item.enabled ? item.enabled() : true;
+      
+      menuItem.style.cssText = `
+        padding: 6px 20px 6px 12px;
+        cursor: ${isEnabled ? 'pointer' : 'default'};
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: ${isEnabled ? '#cccccc' : '#666666'};
+      `;
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = item.label;
+      menuItem.appendChild(labelSpan);
+      
+      if (item.shortcut) {
+        const shortcut = document.createElement('span');
+        shortcut.textContent = item.shortcut;
+        shortcut.style.cssText = 'color: #858585; font-size: 11px; margin-left: 20px;';
+        menuItem.appendChild(shortcut);
+      }
+      
+      if (isEnabled) {
+        menuItem.addEventListener('mouseenter', () => {
+          menuItem.style.backgroundColor = '#37373d';
+        });
+        menuItem.addEventListener('mouseleave', () => {
+          menuItem.style.backgroundColor = 'transparent';
+        });
+        menuItem.addEventListener('click', (e) => {
+          e.stopPropagation();
+          item.action();
+        });
+      }
+      
+      windowMenuDropdown.appendChild(menuItem);
+    }
+  });
+  
+  const rect = menuElement.getBoundingClientRect();
+  windowMenuDropdown.style.top = `${rect.bottom + 2}px`;
+  windowMenuDropdown.style.left = `${rect.left}px`;
+  
+  document.body.appendChild(windowMenuDropdown);
+}
+
+function hideWindowMenu() {
+  if (windowMenuDropdown) {
+    windowMenuDropdown.remove();
+    windowMenuDropdown = null;
+  }
+}
+
+function createNewWindow() {
+  // For now, just create a new file - in the future this could open a new Electron window
+  createNewFile();
+}
+
+function closeCurrentEditor() {
+  if (activeEditor && activeFilePath) {
+    const currentTab = fileTabs.find(t => t.filePath === activeFilePath || t.editor === activeEditor);
+    if (currentTab) {
+      closeTab(currentTab);
+    }
+  } else if (activeEditor) {
+    // Handle untitled files
+    const currentTab = fileTabs.find(t => t.editor === activeEditor);
+    if (currentTab) {
+      closeTab(currentTab);
+    }
+  }
+}
+
+function splitEditor(direction) {
+  // Placeholder for split view - will be implemented later
+  alert(`Split editor ${direction} - Feature coming soon!`);
+}
+
+function closeEditorGroup() {
+  // Placeholder for closing editor group - will be implemented with split view
+  alert('Close editor group - Feature coming soon!');
+}
+
+function closeAllEditors() {
+  if (fileTabs.length === 0) return;
+  
+  const hasUnsavedChanges = fileTabs.some(tab => {
+    return tab.tabElement.querySelector('span').textContent.includes('*');
+  });
+  
+  if (hasUnsavedChanges) {
+    if (!confirm('Some files have unsaved changes. Close all editors anyway?')) {
+      return;
+    }
+  }
+  
+  // Close all tabs
+  const tabsToClose = [...fileTabs];
+  tabsToClose.forEach(tab => {
+    closeTab(tab);
+  });
 }
 
 function toggleSidebar() {
