@@ -16,18 +16,21 @@ This project uses Electron and requires Node.js to build and run.
 ### Installation
 
 Install all dependencies:
-
+```bash
 npm install
+```
 
 ### Build Commands
 
 **Development Mode:**
-
+```bash
 npm run dev
+```
 
 **Production Mode:**
-
+```bash
 npm start
+```
 
 ## COPYRIGHT
 
