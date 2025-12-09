@@ -325,6 +325,125 @@
             position: relative;
         }
 
+        /* Bottom panel */
+        #bottom-panel {
+            display: none;
+            flex-direction: column;
+            background-color: #1e1e1e;
+            border-top: 1px solid #3e3e42;
+            position: relative;
+            min-height: 150px;
+            max-height: 80vh;
+        }
+
+        #bottom-panel.visible {
+            display: flex;
+        }
+
+        #panel-resizer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            cursor: row-resize;
+            background-color: transparent;
+            z-index: 10;
+        }
+
+        #panel-resizer:hover {
+            background-color: #007acc;
+        }
+
+        #panel-resizer.resizing {
+            background-color: #007acc;
+        }
+
+        #panel-tabs {
+            display: flex;
+            background-color: #252526;
+            border-bottom: 1px solid #3e3e42;
+            padding-top: 4px;
+        }
+
+        .panel-tab {
+            padding: 6px 16px;
+            background-color: #2d2d30;
+            border-right: 1px solid #3e3e42;
+            cursor: pointer;
+            user-select: none;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .panel-tab:hover {
+            background-color: #37373d;
+        }
+
+        .panel-tab.active {
+            background-color: #1e1e1e;
+            border-bottom: 2px solid #007acc;
+        }
+
+        #panel-content {
+            flex: 1;
+            overflow: auto;
+            background-color: #1e1e1e;
+            color: #cccccc;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            padding: 8px;
+        }
+
+        .panel-tab-content {
+            display: none;
+            height: 100%;
+            width: 100%;
+        }
+
+        .panel-tab-content.active {
+            display: block;
+        }
+
+        #terminal-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            padding: 4px 0;
+        }
+
+        #terminal-input-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            border-top: 1px solid #3e3e42;
+        }
+
+        #terminal-input {
+            background-color: transparent;
+            border: none;
+            color: #cccccc;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            outline: none;
+            flex: 1;
+            padding: 4px 0;
+        }
+
+        #build-output-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+        }
+
         /* Status bar at bottom */
         #status-bar {
             height: 22px;
@@ -363,6 +482,27 @@
             
             <!-- Editor container -->
             <div id="editor-container"></div>
+        </div>
+
+        <!-- Bottom panel -->
+        <div id="bottom-panel">
+            <div id="panel-resizer"></div>
+            <div id="panel-tabs">
+                <div class="panel-tab active" data-tab="terminal">Terminal</div>
+                <div class="panel-tab" data-tab="build">Build Output</div>
+            </div>
+            <div id="panel-content">
+                <div class="panel-tab-content active" id="terminal-content">
+                    <div id="terminal-output"></div>
+                    <div id="terminal-input-line">
+                        <span style="color: #39FF14;">$</span>
+                        <input type="text" id="terminal-input" placeholder="Type commands here..." />
+                    </div>
+                </div>
+                <div class="panel-tab-content" id="build-output-content">
+                    <div id="build-output-text">Build output will appear here...</div>
+                </div>
+            </div>
         </div>
 
         <!-- Status bar -->

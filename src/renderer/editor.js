@@ -59,8 +59,9 @@ async function loadTheme() {
 
 function initializeApp() {
   setupMenus();
-  createNewFile();
   setupKeyboardShortcuts();
+  setupBottomPanel();
+  createNewFile();
   
   // Expose editor functions for fileTree.js
   window.editorAPI.createEditorTab = createEditorTab;
@@ -76,7 +77,9 @@ let helpMenuDropdown = null;
 // View state
 let sidebarVisible = false;
 let statusBarVisible = true;
+let bottomPanelVisible = false;
 let currentZoom = 0; // 0 = 100%, positive = zoomed in, negative = zoomed out
+let bottomPanelHeight = 300; // Default height in pixels
 
 function setupMenus() {
   const fileMenu = document.getElementById('file-menu');
@@ -321,8 +324,10 @@ function showViewMenu(menuElement) {
   // Update state from DOM
   const sidebar = document.getElementById('file-tree-sidebar');
   const statusBar = document.getElementById('status-bar');
+  const bottomPanel = document.getElementById('bottom-panel');
   sidebarVisible = sidebar.classList.contains('visible');
   statusBarVisible = statusBar.style.display !== 'none';
+  bottomPanelVisible = bottomPanel.classList.contains('visible');
   
   viewMenuDropdown = document.createElement('div');
   viewMenuDropdown.id = 'view-menu-dropdown';
@@ -347,6 +352,7 @@ function showViewMenu(menuElement) {
   const menuItems = [
     { label: 'Explorer', action: () => { toggleSidebar(); hideViewMenu(); }, shortcut: 'Ctrl+Shift+E', checked: sidebarVisible },
     { label: 'Status Bar', action: () => { toggleStatusBar(); hideViewMenu(); }, checked: statusBarVisible },
+    { label: 'Bottom Panel', action: () => { toggleBottomPanel(); hideViewMenu(); }, checked: bottomPanelVisible },
     { label: '---' },
     { label: 'Zoom In', action: () => { zoomIn(); hideViewMenu(); }, shortcut: 'Ctrl+=' },
     { label: 'Zoom Out', action: () => { zoomOut(); hideViewMenu(); }, shortcut: 'Ctrl+-' },
@@ -576,6 +582,110 @@ function toggleStatusBar() {
     statusBar.style.display = 'flex';
   } else {
     statusBar.style.display = 'none';
+  }
+}
+
+function toggleBottomPanel() {
+  const bottomPanel = document.getElementById('bottom-panel');
+  bottomPanelVisible = !bottomPanelVisible;
+  if (bottomPanelVisible) {
+    bottomPanel.classList.add('visible');
+    bottomPanel.style.height = `${bottomPanelHeight}px`;
+  } else {
+    bottomPanel.classList.remove('visible');
+  }
+}
+
+function setupBottomPanel() {
+  // Tab switching
+  const panelTabs = document.querySelectorAll('.panel-tab');
+  panelTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Remove active class from all tabs
+      panelTabs.forEach(t => t.classList.remove('active'));
+      // Add active class to clicked tab
+      tab.classList.add('active');
+      
+      // Hide all tab contents
+      document.querySelectorAll('.panel-tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      
+      // Show selected tab content
+      const tabName = tab.dataset.tab;
+      const content = document.getElementById(`${tabName}-content`);
+      if (content) {
+        content.classList.add('active');
+      }
+    });
+  });
+  
+  // Panel resizer
+  const panelResizer = document.getElementById('panel-resizer');
+  let isResizing = false;
+  let startY = 0;
+  let startHeight = 0;
+  
+  panelResizer.addEventListener('mousedown', (e) => {
+    if (!bottomPanelVisible) return;
+    isResizing = true;
+    startY = e.clientY;
+    const bottomPanel = document.getElementById('bottom-panel');
+    startHeight = bottomPanel.offsetHeight;
+    panelResizer.classList.add('resizing');
+    document.body.style.cursor = 'row-resize';
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const deltaY = startY - e.clientY; // Inverted because we're resizing from top
+    const newHeight = Math.max(150, Math.min(window.innerHeight * 0.8, startHeight + deltaY));
+    bottomPanelHeight = newHeight;
+    const bottomPanel = document.getElementById('bottom-panel');
+    if (bottomPanel && bottomPanelVisible) {
+      bottomPanel.style.height = `${newHeight}px`;
+    }
+  });
+  
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      panelResizer.classList.remove('resizing');
+      document.body.style.cursor = '';
+    }
+  });
+  
+  // Terminal input handling (basic implementation)
+  const terminalInput = document.getElementById('terminal-input');
+  const terminalOutput = document.getElementById('terminal-output');
+  
+  if (terminalInput) {
+    terminalInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const command = terminalInput.value.trim();
+        if (command) {
+          // Add command to output
+          const commandLine = document.createElement('div');
+          commandLine.style.color = '#39FF14';
+          commandLine.textContent = `$ ${command}`;
+          terminalOutput.appendChild(commandLine);
+          
+          // Add output (placeholder - will be implemented with actual command execution later)
+          const outputLine = document.createElement('div');
+          outputLine.style.color = '#cccccc';
+          outputLine.textContent = `Command "${command}" executed (terminal functionality coming soon)`;
+          terminalOutput.appendChild(outputLine);
+          
+          // Clear input
+          terminalInput.value = '';
+          
+          // Scroll to bottom
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+        e.preventDefault();
+      }
+    });
   }
 }
 
