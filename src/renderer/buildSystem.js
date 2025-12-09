@@ -120,6 +120,9 @@ function showBuildMenu(menuElement) {
     { label: 'Rebuild', action: () => { rebuild(); hideBuildMenu(); }, shortcut: 'Ctrl+Shift+R', enabled: () => hasConfig && !isBuilding },
     { label: 'Configure', action: () => { configureBuild(); hideBuildMenu(); }, shortcut: 'Ctrl+Shift+C', enabled: () => hasConfig && !isBuilding },
     { label: '---' },
+    { label: 'Run', action: () => { runExecutable(); hideBuildMenu(); }, shortcut: 'Ctrl+F5', enabled: () => hasConfig && !isBuilding },
+    { label: 'Build and Run', action: () => { buildAndRun(); hideBuildMenu(); }, shortcut: 'F5', enabled: () => hasConfig && !isBuilding },
+    { label: '---' },
     { label: 'Cancel Build', action: () => { cancelBuild(); hideBuildMenu(); }, shortcut: 'Ctrl+Break', enabled: () => isBuilding },
     { label: '---' },
     { label: 'Configuration: Debug', action: () => { setConfiguration('Debug'); hideBuildMenu(); }, shortcut: '', enabled: () => hasConfig && currentBuildConfig.buildSystem === 'cmake', checked: () => currentBuildConfig && currentBuildConfig.configuration === 'Debug' },
@@ -596,6 +599,97 @@ async function cancelBuild() {
   }
 }
 
+// Run executable
+async function runExecutable() {
+  if (!currentBuildConfig || currentBuildConfig.buildSystem === 'none') {
+    alert('No build system configured');
+    return;
+  }
+  
+  if (isBuilding) {
+    alert('Build in progress');
+    return;
+  }
+  
+  const projectPath = getCurrentProjectPath();
+  if (!projectPath) {
+    alert('No project folder open');
+    return;
+  }
+  
+  // Get executable path - either configured or auto-detect
+  let executablePath = currentBuildConfig.executablePath;
+  
+  if (!executablePath) {
+    // Try to auto-detect executable
+    const detected = await window.electronAPI.detectExecutable(projectPath, currentBuildConfig);
+    if (detected.success && detected.executable) {
+      executablePath = detected.executable;
+      addBuildOutput(`Auto-detected executable: ${executablePath}\n`, 'info');
+    } else {
+      // Ask user to configure
+      const userPath = await showPromptDialog('Enter executable path (relative to project):', 'build/bin/myprogram');
+      if (!userPath) {
+        return;
+      }
+      executablePath = userPath;
+      // Save for future use
+      currentBuildConfig.executablePath = executablePath;
+      await saveBuildConfig(projectPath, currentBuildConfig);
+    }
+  }
+  
+  switchToBuildOutputTab();
+  addBuildOutput('\n' + '─'.repeat(50) + '\n', 'info');
+  addBuildOutput(`Running: ${executablePath}\n`, 'info');
+  addBuildOutput('─'.repeat(50) + '\n\n', 'info');
+  
+  isBuilding = true;
+  updateBuildStatus();
+  
+  try {
+    const result = await window.electronAPI.runExecutable(projectPath, executablePath);
+    
+    isBuilding = false;
+    updateBuildStatus();
+    
+    if (result.success) {
+      addBuildOutput(`\n\n✓ Program exited with code ${result.exitCode}\n`, result.exitCode === 0 ? 'success' : 'warning');
+    } else {
+      addBuildOutput(`\n✗ Failed to run: ${result.error}\n`, 'error');
+    }
+  } catch (error) {
+    isBuilding = false;
+    updateBuildStatus();
+    addBuildOutput(`\n✗ Error: ${error.message}\n`, 'error');
+  }
+}
+
+// Build and run
+async function buildAndRun() {
+  if (!currentBuildConfig || currentBuildConfig.buildSystem === 'none') {
+    alert('No build system configured');
+    return;
+  }
+  
+  if (isBuilding) {
+    alert('Build in progress');
+    return;
+  }
+  
+  // First build
+  await runBuild();
+  
+  // Check if build succeeded (isBuilding will be false after build completes)
+  // We need to wait a moment and check the last build output
+  setTimeout(async () => {
+    const buildOutput = document.getElementById('build-output-text');
+    if (buildOutput && buildOutput.innerHTML.includes('Build succeeded')) {
+      await runExecutable();
+    }
+  }, 100);
+}
+
 // Set configuration (Debug/Release)
 async function setConfiguration(config) {
   if (!currentBuildConfig || currentBuildConfig.buildSystem !== 'cmake') {
@@ -863,6 +957,8 @@ window.buildSystemAPI = {
   rebuild,
   configureBuild,
   cancelBuild,
+  runExecutable,
+  buildAndRun,
   showBuildConfigDialog,
   isBuilding: () => isBuilding,
   getPermanentBuildOutput: () => permanentBuildOutputHTML,

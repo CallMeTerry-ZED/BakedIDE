@@ -988,6 +988,23 @@ function setupKeyboardShortcuts() {
       return;
     }
     
+    // Run shortcuts
+    if (e.key === 'F5' && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      if (window.buildSystemAPI && window.buildSystemAPI.buildAndRun) {
+        window.buildSystemAPI.buildAndRun();
+      }
+      return;
+    }
+    
+    if (e.ctrlKey && e.key === 'F5') {
+      e.preventDefault();
+      if (window.buildSystemAPI && window.buildSystemAPI.runExecutable) {
+        window.buildSystemAPI.runExecutable();
+      }
+      return;
+    }
+    
     // Cancel build (Ctrl+C when not in editor and build is running)
     if (e.ctrlKey && e.key === 'c' && !e.target.closest('.monaco-editor')) {
       if (window.buildSystemAPI && window.buildSystemAPI.cancelBuild && window.buildSystemAPI.isBuilding) {

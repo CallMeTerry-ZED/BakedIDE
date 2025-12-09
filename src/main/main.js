@@ -557,6 +557,123 @@ ipcMain.handle('build:cancel', async () => {
   return { success: true };
 });
 
+// Detect executable in build directory
+ipcMain.handle('build:detectExecutable', async (event, projectPath, config) => {
+  try {
+    const buildDir = path.join(projectPath, config.buildDirectory || 'build');
+    
+    // Common locations to search for executables
+    const searchPaths = [
+      buildDir,
+      path.join(buildDir, 'bin'),
+      path.join(buildDir, 'Debug'),
+      path.join(buildDir, 'Release'),
+      path.join(buildDir, 'bin', 'Debug'),
+      path.join(buildDir, 'bin', 'Release')
+    ];
+    
+    for (const searchPath of searchPaths) {
+      try {
+        const entries = await fs.readdir(searchPath, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isFile()) {
+            const fullPath = path.join(searchPath, entry.name);
+            // Check if it's an executable (no extension on Unix, .exe on Windows)
+            const isExecutable = !entry.name.includes('.') || 
+                                 entry.name.endsWith('.exe') ||
+                                 entry.name.endsWith('.out');
+            
+            if (isExecutable) {
+              // Verify it's actually executable
+              try {
+                await fs.access(fullPath, fs.constants ? fs.constants.X_OK : 1);
+                // Return path relative to project
+                const relativePath = path.relative(projectPath, fullPath);
+                return { success: true, executable: relativePath };
+              } catch {
+                // Not executable, continue searching
+              }
+            }
+          }
+        }
+      } catch {
+        // Directory doesn't exist, continue
+      }
+    }
+    
+    return { success: false, error: 'No executable found' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Run executable
+let currentRunProcess = null;
+
+ipcMain.handle('build:runExecutable', async (event, projectPath, executablePath) => {
+  // Cancel any existing run
+  if (currentRunProcess) {
+    try {
+      currentRunProcess.kill();
+    } catch (error) {
+      // Ignore
+    }
+    currentRunProcess = null;
+  }
+  
+  return new Promise((resolve) => {
+    const fullPath = path.isAbsolute(executablePath) 
+      ? executablePath 
+      : path.join(projectPath, executablePath);
+    
+    // Check if file exists
+    fs.access(fullPath).then(() => {
+      currentRunProcess = spawn(fullPath, [], {
+        cwd: projectPath,
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      currentRunProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+        mainWindow.webContents.send('build:output', { type: 'stdout', data: data.toString() });
+      });
+      
+      currentRunProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+        mainWindow.webContents.send('build:output', { type: 'stderr', data: data.toString() });
+      });
+      
+      currentRunProcess.on('close', (code) => {
+        currentRunProcess = null;
+        resolve({
+          success: true,
+          exitCode: code,
+          stdout: stdout,
+          stderr: stderr
+        });
+      });
+      
+      currentRunProcess.on('error', (error) => {
+        currentRunProcess = null;
+        resolve({
+          success: false,
+          error: error.message,
+          stdout: stdout,
+          stderr: stderr
+        });
+      });
+    }).catch((error) => {
+      resolve({
+        success: false,
+        error: `Executable not found: ${fullPath}`
+      });
+    });
+  });
+});
+
 // Session management - save/load last project
 const sessionFilePath = path.join(app.getPath('userData'), 'session.json');
 

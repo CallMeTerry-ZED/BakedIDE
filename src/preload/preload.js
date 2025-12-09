@@ -42,6 +42,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkCmakeGenerators: () => ipcRenderer.invoke('build:checkCmakeGenerators'),
   executeBuild: (projectPath, config, action) => ipcRenderer.invoke('build:execute', projectPath, config, action),
   cancelBuild: () => ipcRenderer.invoke('build:cancel'),
+  detectExecutable: (projectPath, config) => ipcRenderer.invoke('build:detectExecutable', projectPath, config),
+  runExecutable: (projectPath, executablePath) => ipcRenderer.invoke('build:runExecutable', projectPath, executablePath),
   
   // Listen for build output
   onBuildOutput: (callback) => {
