@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File reading
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
   
+  // Theme loading
+  loadTheme: () => ipcRenderer.invoke('theme:load'),
+  
   // App operations
   quit: () => ipcRenderer.invoke('app:quit')
 });

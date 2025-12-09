@@ -46,16 +46,16 @@ ipcMain.handle('dialog:openFile', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters: [
-      { name: 'All Files', extensions: ['*'] },
-      { name: 'Text Files', extensions: ['txt', 'md'] },
+      { name: 'All Supported Files', extensions: ['js', 'jsx', 'ts', 'tsx', 'cpp', 'cc', 'cxx', 'hpp', 'h', 'hxx', 'c', 'cs', 'py', 'lua', 'luau', 'json', 'html', 'css', 'md', 'txt'] },
       { name: 'JavaScript', extensions: ['js', 'jsx'] },
       { name: 'TypeScript', extensions: ['ts', 'tsx'] },
-      { name: 'C++', extensions: ['cpp', 'cc', 'cxx', 'hpp', 'h', 'hxx'] },
+      { name: 'C++', extensions: ['cpp', 'cc', 'cxx', 'hpp', 'hxx'] },
       { name: 'C', extensions: ['c', 'h'] },
       { name: 'C#', extensions: ['cs'] },
       { name: 'Python', extensions: ['py'] },
-      { name: 'Lua', extensions: ['lua'] },
-      { name: 'Luau', extensions: ['luau'] }
+      { name: 'Lua', extensions: ['lua', 'luau'] },
+      { name: 'Text Files', extensions: ['txt', 'md'] },
+      { name: 'All Files', extensions: ['*'] }
     ]
   });
 
@@ -112,6 +112,16 @@ ipcMain.handle('file:read', async (event, filePath) => {
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     return { success: true, content };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('theme:load', async () => {
+  try {
+    const themePath = path.join(__dirname, '../../assets/themes/baked-theme.json');
+    const content = await fs.readFile(themePath, 'utf-8');
+    return { success: true, data: JSON.parse(content) };
   } catch (error) {
     return { success: false, error: error.message };
   }

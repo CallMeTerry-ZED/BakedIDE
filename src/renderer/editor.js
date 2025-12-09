@@ -9,14 +9,46 @@ require.config({ paths: { vs: '../../node_modules/monaco-editor/min/vs' } });
 
 // Load Monaco Editor
 require(['vs/editor/editor.main'], function () {
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', () => {
+  loadTheme().then(() => {
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', () => {
+        initializeApp();
+      });
+    } else {
       initializeApp();
-    });
-  } else {
-    initializeApp();
-  }
+    }
+  });
 });
+
+async function loadTheme() {
+  try {
+    const result = await window.electronAPI.loadTheme();
+    if (result.success) {
+      const themeData = result.data;
+      
+      monaco.editor.defineTheme('baked-theme', {
+        base: themeData.base || 'vs-dark',
+        inherit: themeData.inherit !== false,
+        rules: themeData.rules || [],
+        colors: themeData.colors || {}
+      });
+      
+      monaco.editor.setTheme('baked-theme');
+      
+      // Force refresh all existing editors
+      editors.forEach(editor => {
+        editor.updateOptions({ theme: 'baked-theme' });
+      });
+    } else {
+      console.warn('Failed to load theme:', result.error);
+      monaco.editor.setTheme('vs-dark');
+    }
+  } catch (error) {
+    console.warn('Failed to load theme:', error);
+    monaco.editor.setTheme('vs-dark');
+  }
+}
+
 
 function initializeApp() {
   setupMenus();
@@ -25,6 +57,7 @@ function initializeApp() {
 }
 
 let fileMenuDropdown = null;
+let helpMenuDropdown = null;
 
 function setupMenus() {
   const fileMenu = document.getElementById('file-menu');
@@ -36,9 +69,8 @@ function setupMenus() {
 
   document.getElementById('help-menu').addEventListener('click', (e) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to quit?')) {
-      window.electronAPI.quit();
-    }
+    e.preventDefault();
+    showHelpMenu(e.target);
   });
   
   ['edit-menu', 'view-menu', 'window-menu'].forEach(menuId => {
@@ -49,8 +81,12 @@ function setupMenus() {
   
   document.addEventListener('click', (e) => {
     const fileMenu = document.getElementById('file-menu');
+    const helpMenu = document.getElementById('help-menu');
     if (fileMenuDropdown && !fileMenuDropdown.contains(e.target) && !fileMenu.contains(e.target)) {
       hideFileMenu();
+    }
+    if (helpMenuDropdown && !helpMenuDropdown.contains(e.target) && !helpMenu.contains(e.target)) {
+      hideHelpMenu();
     }
   });
 }
@@ -141,6 +177,81 @@ function hideFileMenu() {
   }
 }
 
+function showHelpMenu(menuElement) {
+  hideHelpMenu();
+  
+  helpMenuDropdown = document.createElement('div');
+  helpMenuDropdown.id = 'help-menu-dropdown';
+  helpMenuDropdown.style.cssText = `
+    position: absolute;
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 10000;
+    min-width: 200px;
+    padding: 4px 0;
+  `;
+  
+  helpMenuDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+  
+  const menuItems = [
+    { label: 'About BakedIDE', action: () => { alert('BakedIDE v0.0.1\nAdvanced text editor inspired by Kate and VS Code'); hideHelpMenu(); } },
+    { label: '---' },
+    { label: 'Quit', action: () => { if (confirm('Are you sure you want to quit?')) { window.electronAPI.quit(); } } }
+  ];
+  
+  menuItems.forEach(item => {
+    if (item.label === '---') {
+      const separator = document.createElement('div');
+      separator.style.cssText = 'height: 1px; background-color: #3e3e42; margin: 4px 0;';
+      helpMenuDropdown.appendChild(separator);
+    } else {
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        padding: 6px 20px 6px 12px;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      `;
+      
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = item.label;
+      menuItem.appendChild(labelSpan);
+      
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.backgroundColor = '#37373d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.backgroundColor = 'transparent';
+      });
+      menuItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        item.action();
+      });
+      
+      helpMenuDropdown.appendChild(menuItem);
+    }
+  });
+  
+  const rect = menuElement.getBoundingClientRect();
+  helpMenuDropdown.style.top = `${rect.bottom + 2}px`;
+  helpMenuDropdown.style.left = `${rect.left}px`;
+  
+  document.body.appendChild(helpMenuDropdown);
+}
+
+function hideHelpMenu() {
+  if (helpMenuDropdown) {
+    helpMenuDropdown.remove();
+    helpMenuDropdown = null;
+  }
+}
+
 function setupKeyboardShortcuts() {
   if (typeof monaco !== 'undefined') {
     monaco.editor.addKeybindingRule({
@@ -217,8 +328,9 @@ function createEditorTab(filePath, fileName, content) {
   const editor = monaco.editor.create(editorDiv, {
     value: content,
     language: language,
-    theme: 'vs-dark',
+    theme: 'baked-theme',
     automaticLayout: true,
+    'semanticHighlighting.enabled': true,
     fontSize: 14,
     minimap: {
       enabled: true
