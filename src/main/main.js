@@ -206,6 +206,27 @@ ipcMain.handle('item:move', async (event, sourcePath, targetPath, itemName, isDi
   }
 });
 
+ipcMain.handle('item:rename', async (event, itemPath, newName) => {
+  try {
+    const parentDir = path.dirname(itemPath);
+    const newPath = path.join(parentDir, newName);
+    
+    // Check if new name already exists
+    try {
+      await fs.access(newPath);
+      return { success: false, error: 'An item with that name already exists' };
+    } catch {
+      // File doesn't exist, proceed
+    }
+    
+    // Rename the item
+    await fs.rename(itemPath, newPath);
+    return { success: true, newPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('dialog:prompt', async (event, title, defaultValue) => {
   // This is handled by the renderer's custom prompt dialog
   // We'll just return null here as the renderer handles it directly

@@ -437,10 +437,12 @@ function showContextMenu(event, targetPath, isDirectory) {
       { label: 'New File', action: () => createNewFileInFolder(targetPath) },
       { label: 'New Folder', action: () => createNewFolderInFolder(targetPath) },
       { label: '---' },
+      { label: 'Rename', action: () => renameItem(targetPath, true) },
       { label: 'Delete', action: () => deleteItem(targetPath, true) }
     );
   } else {
     menuItems.push(
+      { label: 'Rename', action: () => renameItem(targetPath, false) },
       { label: 'Delete', action: () => deleteItem(targetPath, false) }
     );
   }
@@ -579,6 +581,40 @@ async function deleteItem(itemPath, isDirectory) {
     const result = await window.electronAPI.deleteItem(itemPath, isDirectory);
     if (result.success) {
       await refreshFileTree();
+    }
+  }
+}
+
+async function renameItem(itemPath, isDirectory) {
+  const oldName = getBasename(itemPath);
+  const itemType = isDirectory ? 'folder' : 'file';
+  
+  const newName = await showPromptDialog(`Rename ${itemType}:`, oldName);
+  
+  if (newName && newName.trim() && newName.trim() !== oldName) {
+    const result = await window.electronAPI.renameItem(itemPath, newName.trim());
+    if (result.success) {
+      // If this file is open in an editor tab, update the tab
+      if (!isDirectory && window.editorAPI && window.editorAPI.fileTabs) {
+        const tabs = window.editorAPI.fileTabs();
+        const tab = tabs.find(t => t.filePath === itemPath);
+        if (tab) {
+          // Update tab's file path and name
+          tab.filePath = result.newPath;
+          tab.fileName = newName.trim();
+          if (tab.tabElement) {
+            const nameSpan = tab.tabElement.querySelector('span');
+            if (nameSpan) {
+              // Preserve the modified indicator if present
+              const isModified = nameSpan.textContent.includes('*');
+              nameSpan.textContent = newName.trim() + (isModified ? ' *' : '');
+            }
+          }
+        }
+      }
+      await refreshFileTree();
+    } else {
+      alert(`Failed to rename: ${result.error || 'Unknown error'}`);
     }
   }
 }

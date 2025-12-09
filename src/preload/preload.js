@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createFolder: (parentPath, folderName) => ipcRenderer.invoke('folder:create', parentPath, folderName),
   deleteItem: (itemPath, isDirectory) => ipcRenderer.invoke('item:delete', itemPath, isDirectory),
   moveItem: (sourcePath, targetPath, itemName, isDirectory) => ipcRenderer.invoke('item:move', sourcePath, targetPath, itemName, isDirectory),
+  renameItem: (itemPath, newName) => ipcRenderer.invoke('item:rename', itemPath, newName),
   
   // Dialogs
   promptInput: (title, defaultValue) => ipcRenderer.invoke('dialog:prompt', title, defaultValue),
