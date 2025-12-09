@@ -25,14 +25,6 @@ npm install
 
 npm run dev    # Run with DevTools enabled
 
-or
-
-NODE_ENV=development electron .
-
 **Production Mode:**
 
 npm start      # Run in production mode
-
-or
-
-electron .
