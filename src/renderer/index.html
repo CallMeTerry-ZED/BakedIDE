@@ -99,7 +99,22 @@
             background-color: #505050;
         }
 
-        /* Editor area */
+        /* Main content area (sidebar + editor section) */
+        #main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Editor section (tabs + editor + bottom panel) */
+        #editor-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Editor area (just the editor container now) */
         #editor-area {
             flex: 1;
             display: flex;
@@ -503,11 +518,8 @@
             <div class="menu-item" id="help-menu">Help</div>
         </div>
 
-        <!-- Tabs -->
-        <div id="tabs-container"></div>
-
-        <!-- Editor area -->
-        <div id="editor-area">
+        <!-- Main content (sidebar + editor section) -->
+        <div id="main-content">
             <!-- File tree sidebar -->
             <div id="file-tree-sidebar">
                 <div id="file-tree-header">
@@ -518,27 +530,36 @@
                 <div id="sidebar-resizer"></div>
             </div>
             
-            <!-- Editor container -->
-            <div id="editor-container"></div>
-        </div>
+            <!-- Editor section (tabs + editor + bottom panel) -->
+            <div id="editor-section">
+                <!-- Tabs -->
+                <div id="tabs-container"></div>
 
-        <!-- Bottom panel -->
-        <div id="bottom-panel">
-            <div id="panel-resizer"></div>
-            <div id="panel-tabs">
-                <div class="panel-tab active" data-tab="terminal">Terminal</div>
-                <div class="panel-tab" data-tab="build">Build Output</div>
-            </div>
-            <div id="panel-content">
-                <div class="panel-tab-content active" id="terminal-content">
-                    <div id="terminal-output"></div>
-                    <div id="terminal-input-line">
-                        <span style="color: #39FF14;">$</span>
-                        <input type="text" id="terminal-input" placeholder="Type commands here..." />
-                    </div>
+                <!-- Editor area -->
+                <div id="editor-area">
+                    <!-- Editor container -->
+                    <div id="editor-container"></div>
                 </div>
-                <div class="panel-tab-content" id="build-output-content">
-                    <div id="build-output-text">Build output will appear here...</div>
+
+                <!-- Bottom panel -->
+                <div id="bottom-panel">
+                    <div id="panel-resizer"></div>
+                    <div id="panel-tabs">
+                        <div class="panel-tab active" data-tab="terminal">Terminal</div>
+                        <div class="panel-tab" data-tab="build">Build Output</div>
+                    </div>
+                    <div id="panel-content">
+                        <div class="panel-tab-content active" id="terminal-content">
+                            <div id="terminal-output"></div>
+                            <div id="terminal-input-line">
+                                <span style="color: #39FF14;">$</span>
+                                <input type="text" id="terminal-input" placeholder="Type commands here..." />
+                            </div>
+                        </div>
+                        <div class="panel-tab-content" id="build-output-content">
+                            <div id="build-output-text">Build output will appear here...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
