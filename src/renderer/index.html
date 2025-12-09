@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:;">
     <title>BakedIDE</title>
     <style>
         * {
@@ -24,6 +24,78 @@
             flex-direction: column;
             height: 100vh;
             width: 100vw;
+        }
+
+        /* Menu bar */
+        #menu-bar {
+            height: 30px;
+            background-color: #2d2d30;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 13px;
+            -webkit-app-region: drag;
+        }
+
+        .menu-item {
+            -webkit-app-region: no-drag;
+            padding: 5px 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .menu-item:hover {
+            background-color: #3e3e42;
+        }
+
+        /* Tabs container */
+        #tabs-container {
+            display: flex;
+            background-color: #252526;
+            border-bottom: 1px solid #3e3e42;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            background-color: #2d2d30;
+            border-right: 1px solid #3e3e42;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 120px;
+            max-width: 200px;
+        }
+
+        .tab:hover {
+            background-color: #37373d;
+        }
+
+        .tab.active {
+            background-color: #1e1e1e;
+            border-bottom: 2px solid #007acc;
+        }
+
+        .tab-close {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .tab-close:hover {
+            background-color: #505050;
+        }
+
+        /* Editor area */
+        #editor-area {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
         }
 
         #editor-container {
@@ -47,9 +119,26 @@
 </head>
 <body>
     <div id="app">
-        <div id="editor-container"></div>
+        <!-- Menu bar -->
+        <div id="menu-bar">
+            <div class="menu-item" id="file-menu">File</div>
+            <div class="menu-item" id="edit-menu">Edit</div>
+            <div class="menu-item" id="view-menu">View</div>
+            <div class="menu-item" id="window-menu">Window</div>
+            <div class="menu-item" id="help-menu">Help</div>
+        </div>
+
+        <!-- Tabs -->
+        <div id="tabs-container"></div>
+
+        <!-- Editor area -->
+        <div id="editor-area">
+            <div id="editor-container"></div>
+        </div>
+
+        <!-- Status bar -->
         <div id="status-bar">
-            <span>BakedIDE</span>
+            <span id="status-text">BakedIDE</span>
         </div>
     </div>
 

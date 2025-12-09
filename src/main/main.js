@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
+const fs = require('fs').promises;
 
 let mainWindow;
 
@@ -15,8 +16,12 @@ function createWindow() {
       enableRemoteModule: false
     },
     titleBarStyle: 'default',
+    autoHideMenuBar: true, // Hide the default menu bar
     show: false // Don't show until ready
   });
+
+  // Remove the default menu completely
+  Menu.setApplicationMenu(null);
 
   // Load the index.html
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
@@ -35,6 +40,87 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+// IPC Handlers for file operations
+ipcMain.handle('dialog:openFile', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'All Files', extensions: ['*'] },
+      { name: 'Text Files', extensions: ['txt', 'md'] },
+      { name: 'JavaScript', extensions: ['js', 'jsx'] },
+      { name: 'TypeScript', extensions: ['ts', 'tsx'] },
+      { name: 'C++', extensions: ['cpp', 'cc', 'cxx', 'hpp', 'h', 'hxx'] },
+      { name: 'C', extensions: ['c', 'h'] },
+      { name: 'C#', extensions: ['cs'] },
+      { name: 'Python', extensions: ['py'] },
+      { name: 'Lua', extensions: ['lua'] },
+      { name: 'Luau', extensions: ['luau'] }
+    ]
+  });
+
+  if (!result.canceled && result.filePaths.length > 0) {
+    const filePath = result.filePaths[0];
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return { success: true, filePath, content };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  
+  return { success: false, canceled: true };
+});
+
+ipcMain.handle('dialog:saveFile', async (event, content, filePath) => {
+  try {
+    await fs.writeFile(filePath, content, 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('dialog:saveFileAs', async (event, content) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    filters: [
+      { name: 'All Files', extensions: ['*'] },
+      { name: 'Text Files', extensions: ['txt', 'md'] },
+      { name: 'JavaScript', extensions: ['js'] },
+      { name: 'TypeScript', extensions: ['ts'] },
+      { name: 'C++', extensions: ['cpp', 'hpp'] },
+      { name: 'C', extensions: ['c', 'h'] },
+      { name: 'C#', extensions: ['cs'] },
+      { name: 'Python', extensions: ['py'] },
+      { name: 'Lua', extensions: ['lua'] }
+    ]
+  });
+
+  if (!result.canceled && result.filePath) {
+    try {
+      await fs.writeFile(result.filePath, content, 'utf-8');
+      return { success: true, filePath: result.filePath };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  
+  return { success: false, canceled: true };
+});
+
+ipcMain.handle('file:read', async (event, filePath) => {
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    return { success: true, content };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler for quit
+ipcMain.handle('app:quit', () => {
+  app.quit();
+});
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
