@@ -23,8 +23,8 @@ npm install
 
 **Development Mode:**
 
-npm run dev    # Run with DevTools enabled
+npm run dev
 
 **Production Mode:**
 
-npm start      # Run in production mode
+npm start
