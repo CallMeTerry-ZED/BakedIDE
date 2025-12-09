@@ -503,6 +503,220 @@
             font-size: 12px;
             border-top: 1px solid #005a9e;
         }
+
+        /* Fuzzy Finder / Quick Open */
+        #fuzzy-finder {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            max-width: 90vw;
+            background-color: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 10002;
+            display: none;
+            flex-direction: column;
+            max-height: 400px;
+        }
+
+        #fuzzy-finder.visible {
+            display: flex;
+        }
+
+        #fuzzy-finder-input {
+            width: 100%;
+            padding: 12px 16px;
+            background-color: #3c3c3c;
+            border: none;
+            border-bottom: 1px solid #3e3e42;
+            border-radius: 6px 6px 0 0;
+            color: #cccccc;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        #fuzzy-finder-input:focus {
+            background-color: #404040;
+        }
+
+        #fuzzy-finder-input::placeholder {
+            color: #808080;
+        }
+
+        #fuzzy-finder-results {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 350px;
+        }
+
+        .fuzzy-result {
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #2d2d30;
+        }
+
+        .fuzzy-result:hover,
+        .fuzzy-result.selected {
+            background-color: #094771;
+        }
+
+        .fuzzy-result-icon {
+            font-size: 14px;
+            width: 20px;
+            text-align: center;
+            opacity: 0.7;
+        }
+
+        .fuzzy-result-name {
+            flex: 1;
+            font-size: 13px;
+            color: #cccccc;
+        }
+
+        .fuzzy-result-name .highlight {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        .fuzzy-result-path {
+            font-size: 11px;
+            color: #808080;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .fuzzy-no-results {
+            padding: 20px;
+            text-align: center;
+            color: #808080;
+            font-size: 13px;
+        }
+
+        /* Find in Files Panel */
+        #find-in-files {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            max-width: 90vw;
+            background-color: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 6px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 10002;
+            display: none;
+            flex-direction: column;
+            max-height: 500px;
+        }
+
+        #find-in-files.visible {
+            display: flex;
+        }
+
+        #find-in-files-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #find-in-files-header input {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: #3c3c3c;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            color: #cccccc;
+            font-size: 13px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        #find-in-files-header input:focus {
+            border-color: #007acc;
+        }
+
+        #find-in-files-options {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        #find-in-files-options label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        #find-in-files-results {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 350px;
+        }
+
+        .find-result-file {
+            padding: 8px 16px;
+            background-color: #2d2d30;
+            font-size: 12px;
+            color: #cccccc;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .find-result-file:hover {
+            background-color: #37373d;
+        }
+
+        .find-result-match {
+            padding: 4px 16px 4px 32px;
+            font-size: 12px;
+            color: #cccccc;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            white-space: pre;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .find-result-match:hover {
+            background-color: #094771;
+        }
+
+        .find-result-match .line-number {
+            color: #858585;
+            margin-right: 12px;
+            min-width: 40px;
+            display: inline-block;
+        }
+
+        .find-result-match .match-text {
+            background-color: #613214;
+            color: #f5f543;
+        }
+
+        #find-in-files-status {
+            padding: 8px 16px;
+            border-top: 1px solid #3e3e42;
+            font-size: 12px;
+            color: #808080;
+        }
     </style>
 </head>
 <body>
@@ -576,6 +790,26 @@
         </div>
     </div>
 
+    <!-- Fuzzy Finder / Quick Open (Ctrl+P) -->
+    <div id="fuzzy-finder">
+        <input type="text" id="fuzzy-finder-input" placeholder="Search files by name..." autocomplete="off" />
+        <div id="fuzzy-finder-results"></div>
+    </div>
+
+    <!-- Find in Files (Ctrl+Shift+F) -->
+    <div id="find-in-files">
+        <div id="find-in-files-header">
+            <input type="text" id="find-in-files-input" placeholder="Search in files..." autocomplete="off" />
+            <div id="find-in-files-options">
+                <label><input type="checkbox" id="find-case-sensitive" /> Case Sensitive</label>
+                <label><input type="checkbox" id="find-regex" /> Regex</label>
+                <label><input type="checkbox" id="find-whole-word" /> Whole Word</label>
+            </div>
+        </div>
+        <div id="find-in-files-results"></div>
+        <div id="find-in-files-status"></div>
+    </div>
+
     <!-- Load xterm.js BEFORE Monaco to avoid AMD loader conflicts -->
     <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
     <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
@@ -584,6 +818,7 @@
     <script src="../../node_modules/monaco-editor/min/vs/loader.js"></script>
     <script src="./fileTree.js"></script>
     <script src="./buildSystem.js"></script>
+    <script src="./search.js"></script>
     <script src="./editor.js"></script>
     <script src="./terminal.js"></script>
 </body>

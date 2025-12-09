@@ -312,6 +312,9 @@ function showEditMenu(menuElement) {
     { label: '---' },
     { label: 'Find', action: () => { executeEditorCommand('actions.find'); hideEditMenu(); }, shortcut: 'Ctrl+F', enabled: () => activeEditor !== null },
     { label: 'Replace', action: () => { executeEditorCommand('editor.action.startFindReplaceAction'); hideEditMenu(); }, shortcut: 'Ctrl+H', enabled: () => activeEditor !== null },
+    { label: 'Find in Files', action: () => { if (window.searchAPI) window.searchAPI.showFindInFiles(); hideEditMenu(); }, shortcut: 'Ctrl+Shift+F', enabled: () => true },
+    { label: '---' },
+    { label: 'Go to File...', action: () => { if (window.searchAPI) window.searchAPI.showFuzzyFinder(); hideEditMenu(); }, shortcut: 'Ctrl+P', enabled: () => true },
   ];
   
   menuItems.forEach(item => {
@@ -1034,9 +1037,23 @@ function setupKeyboardShortcuts() {
       e.preventDefault();
       saveFileAs();
     }
-    // Edit operations - Monaco handles these natively, but we can add fallbacks
+    // Quick Open / Fuzzy Finder (Ctrl+P)
+    else if (e.ctrlKey && e.key === 'p' && !e.shiftKey) {
+      e.preventDefault();
+      if (window.searchAPI && window.searchAPI.showFuzzyFinder) {
+        window.searchAPI.showFuzzyFinder();
+      }
+    }
+    // Find in Files (Ctrl+Shift+F)
+    else if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+      e.preventDefault();
+      if (window.searchAPI && window.searchAPI.showFindInFiles) {
+        window.searchAPI.showFindInFiles();
+      }
+    }
+    // Edit operations - Monaco handles these natively
     else if (e.ctrlKey && e.key === 'f' && !e.shiftKey) {
-      // Find - Monaco handles this natively
+      // Find in current file - Monaco handles this natively
     } else if (e.ctrlKey && e.key === 'h' && !e.shiftKey) {
       // Replace - Monaco handles this natively
     } else if (e.ctrlKey && e.key === 'a' && !e.shiftKey) {
