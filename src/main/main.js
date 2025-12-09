@@ -2,8 +2,10 @@ const { app, BrowserWindow, dialog, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const { promisify } = require('util');
+const { spawn } = require('child_process');
 
 let mainWindow;
+let currentBuildProcess = null;
 
 function createWindow() {
   // Create the browser window
@@ -50,7 +52,7 @@ ipcMain.handle('dialog:openFile', async () => {
       { name: 'All Supported Files', extensions: ['js', 'jsx', 'ts', 'tsx', 'cpp', 'cc', 'cxx', 'hpp', 'h', 'hxx', 'c', 'cs', 'py', 'lua', 'luau', 'json', 'html', 'css', 'md', 'txt'] },
       { name: 'JavaScript', extensions: ['js', 'jsx'] },
       { name: 'TypeScript', extensions: ['ts', 'tsx'] },
-      { name: 'C++', extensions: ['cpp', 'cc', 'cxx', 'hpp', 'hxx'] },
+      { name: 'C++', extensions: ['cpp', 'cc', 'cxx', 'hpp', 'hxx', 'h'] },
       { name: 'C', extensions: ['c', 'h'] },
       { name: 'C#', extensions: ['cs'] },
       { name: 'Python', extensions: ['py'] },
@@ -236,6 +238,351 @@ ipcMain.handle('theme:load', async () => {
 // IPC handler for quit
 ipcMain.handle('app:quit', () => {
   app.quit();
+});
+
+// Build system IPC handlers
+ipcMain.handle('build:detect', async (event, projectPath) => {
+  try {
+    const buildFiles = {
+      cmake: [],
+      premake: [],
+      make: []
+    };
+    
+    async function scanDirectory(dirPath, depth = 0) {
+      if (depth > 3) return; // Limit recursion depth
+      
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dirPath, entry.name);
+          
+          if (entry.isDirectory()) {
+            // Skip common build/output directories
+            if (['build', 'dist', 'out', 'node_modules', '.git', '.bakedide'].includes(entry.name)) {
+              continue;
+            }
+            await scanDirectory(fullPath, depth + 1);
+          } else if (entry.isFile()) {
+            const name = entry.name.toLowerCase();
+            if (name === 'cmakelists.txt') {
+              buildFiles.cmake.push(fullPath);
+            } else if (name === 'premake5.lua' || name === 'premake4.lua') {
+              buildFiles.premake.push(fullPath);
+            } else if (name === 'makefile' || name === 'makefile') {
+              buildFiles.make.push(fullPath);
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore permission errors
+      }
+    }
+    
+    await scanDirectory(projectPath);
+    
+    // Find root files (files in project root)
+    const rootFiles = {
+      cmake: buildFiles.cmake.filter(f => path.dirname(f) === projectPath),
+      premake: buildFiles.premake.filter(f => path.dirname(f) === projectPath),
+      make: buildFiles.make.filter(f => path.dirname(f) === projectPath)
+    };
+    
+    return {
+      success: true,
+      detected: {
+        cmake: buildFiles.cmake,
+        premake: buildFiles.premake,
+        make: buildFiles.make
+      },
+      rootFiles: rootFiles
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('build:getConfig', async (event, projectPath) => {
+  try {
+    const configPath = path.join(projectPath, '.bakedide', 'config.json');
+    const content = await fs.readFile(configPath, 'utf-8');
+    return { success: true, config: JSON.parse(content) };
+  } catch (error) {
+    // Config doesn't exist, return default
+    return {
+      success: true,
+      config: {
+        buildSystem: 'none',
+        buildSystemFile: null,
+        buildDirectory: 'build',
+        configuration: 'Debug',
+        cmakeGenerator: 'Unix Makefiles',
+        premakeAction: 'gmake2'
+      }
+    };
+  }
+});
+
+ipcMain.handle('build:saveConfig', async (event, projectPath, config) => {
+  try {
+    const bakedideDir = path.join(projectPath, '.bakedide');
+    try {
+      await fs.mkdir(bakedideDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist
+    }
+    
+    const configPath = path.join(bakedideDir, 'config.json');
+    await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('build:checkTool', async (event, tool) => {
+  return new Promise((resolve) => {
+    const command = tool === 'cmake' ? 'cmake' : tool === 'premake' ? 'premake5' : tool === 'ninja' ? 'ninja' : 'make';
+    const checkProcess = spawn('which', [command], { shell: true });
+    
+    checkProcess.on('close', (code) => {
+      resolve({ success: code === 0, installed: code === 0 });
+    });
+    
+    checkProcess.on('error', () => {
+      resolve({ success: false, installed: false });
+    });
+  });
+});
+
+// Check available CMake generators
+ipcMain.handle('build:checkCmakeGenerators', async () => {
+  return new Promise((resolve) => {
+    const checkProcess = spawn('cmake', ['--help'], { shell: true });
+    let output = '';
+    
+    checkProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    checkProcess.on('close', (code) => {
+      if (code === 0) {
+        // Parse available generators from cmake --help output
+        const generators = [];
+        const lines = output.split('\n');
+        let inGeneratorsSection = false;
+        
+        for (const line of lines) {
+          if (line.includes('Generators')) {
+            inGeneratorsSection = true;
+            continue;
+          }
+          if (inGeneratorsSection && line.trim() === '') {
+            break;
+          }
+          if (inGeneratorsSection && line.trim().startsWith('=')) {
+            continue;
+          }
+          if (inGeneratorsSection && line.trim()) {
+            const match = line.match(/^\s*\*\s*(.+?)(?:\s|$)/);
+            if (match) {
+              generators.push(match[1].trim());
+            }
+          }
+        }
+        
+        // Check for common generators
+        const available = {
+          'Unix Makefiles': true, // Usually available on Unix systems
+          'Ninja': false,
+          'Ninja Multi-Config': false
+        };
+        
+        // Check if ninja is installed
+        const ninjaCheck = spawn('which', ['ninja'], { shell: true });
+        ninjaCheck.on('close', (ninjaCode) => {
+          available['Ninja'] = ninjaCode === 0;
+          available['Ninja Multi-Config'] = ninjaCode === 0;
+          resolve({ success: true, generators: available, allGenerators: generators });
+        });
+        ninjaCheck.on('error', () => {
+          resolve({ success: true, generators: available, allGenerators: generators });
+        });
+      } else {
+        resolve({ success: false, error: 'CMake not found' });
+      }
+    });
+    
+    checkProcess.on('error', () => {
+      resolve({ success: false, error: 'Failed to check CMake' });
+    });
+  });
+});
+
+ipcMain.handle('build:execute', async (event, projectPath, config, action) => {
+  // Cancel any existing build
+  if (currentBuildProcess) {
+    try {
+      currentBuildProcess.kill();
+    } catch (error) {
+      // Ignore
+    }
+    currentBuildProcess = null;
+  }
+  
+  return new Promise((resolve) => {
+    let command = '';
+    let args = [];
+    const buildDir = path.join(projectPath, config.buildDirectory);
+    
+    if (config.buildSystem === 'cmake') {
+      if (action === 'configure') {
+        command = 'cmake';
+        args = ['-B', buildDir, '-S', projectPath, '-DCMAKE_BUILD_TYPE=' + config.configuration];
+        if (config.cmakeGenerator) {
+          args.push('-G', config.cmakeGenerator);
+        }
+      } else if (action === 'build') {
+        command = 'cmake';
+        // For single-config generators (Unix Makefiles, Ninja), use --build with -j for parallel builds
+        // For multi-config generators (Visual Studio), use --config
+        if (config.cmakeGenerator && (config.cmakeGenerator.includes('Visual Studio') || config.cmakeGenerator.includes('Xcode'))) {
+          args = ['--build', buildDir, '--config', config.configuration];
+        } else {
+          args = ['--build', buildDir];
+        }
+      } else if (action === 'clean') {
+        command = 'cmake';
+        args = ['--build', buildDir, '--target', 'clean'];
+      }
+    } else if (config.buildSystem === 'premake') {
+      if (action === 'configure') {
+        command = 'premake5';
+        args = [config.premakeAction || 'gmake2'];
+      } else if (action === 'build') {
+        command = 'make';
+        args = ['-C', projectPath];
+      } else if (action === 'clean') {
+        command = 'make';
+        args = ['-C', projectPath, 'clean'];
+      }
+    } else if (config.buildSystem === 'make') {
+      if (action === 'build') {
+        command = 'make';
+        args = ['-C', projectPath];
+      } else if (action === 'clean') {
+        command = 'make';
+        args = ['-C', projectPath, 'clean'];
+      }
+    }
+    
+    if (!command) {
+      resolve({ success: false, error: 'Invalid build system or action' });
+      return;
+    }
+    
+    currentBuildProcess = spawn(command, args, {
+      cwd: projectPath,
+      shell: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    currentBuildProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
+      mainWindow.webContents.send('build:output', { type: 'stdout', data: data.toString() });
+    });
+    
+    currentBuildProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+      mainWindow.webContents.send('build:output', { type: 'stderr', data: data.toString() });
+    });
+    
+    currentBuildProcess.on('close', (code) => {
+      currentBuildProcess = null;
+      resolve({
+        success: code === 0,
+        exitCode: code,
+        stdout: stdout,
+        stderr: stderr
+      });
+    });
+    
+    currentBuildProcess.on('error', (error) => {
+      currentBuildProcess = null;
+      resolve({
+        success: false,
+        error: error.message,
+        stdout: stdout,
+        stderr: stderr
+      });
+    });
+  });
+});
+
+ipcMain.handle('build:cancel', async () => {
+  if (currentBuildProcess) {
+    try {
+      currentBuildProcess.kill();
+      currentBuildProcess = null;
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: true };
+});
+
+// Session management - save/load last project
+const sessionFilePath = path.join(app.getPath('userData'), 'session.json');
+
+async function saveLastProject(projectPath) {
+  try {
+    const sessionData = {
+      lastProjectPath: projectPath,
+      timestamp: Date.now()
+    };
+    await fs.writeFile(sessionFilePath, JSON.stringify(sessionData, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+async function loadLastProject() {
+  try {
+    const content = await fs.readFile(sessionFilePath, 'utf-8');
+    const sessionData = JSON.parse(content);
+    
+    // Verify the path still exists
+    if (sessionData.lastProjectPath) {
+      try {
+        const stats = await fs.stat(sessionData.lastProjectPath);
+        if (stats.isDirectory()) {
+          return { success: true, projectPath: sessionData.lastProjectPath };
+        }
+      } catch (error) {
+        // Path doesn't exist anymore, ignore it
+        return { success: false, error: 'Path no longer exists' };
+      }
+    }
+    
+    return { success: false, error: 'No saved project' };
+  } catch (error) {
+    // Session file doesn't exist or is invalid
+    return { success: false, error: error.message };
+  }
+}
+
+ipcMain.handle('session:saveLastProject', async (event, projectPath) => {
+  return await saveLastProject(projectPath);
+});
+
+ipcMain.handle('session:loadLastProject', async () => {
+  return await loadLastProject();
 });
 
 // This method will be called when Electron has finished initialization

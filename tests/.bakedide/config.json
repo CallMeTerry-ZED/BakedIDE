@@ -1,0 +1,8 @@
+{
+  "buildSystem": "cmake",
+  "buildSystemFile": "/home/callmeterry/Projects/BakedIDE/tests/CMakeLists.txt",
+  "buildDirectory": "build",
+  "configuration": "Debug",
+  "cmakeGenerator": "Ninja",
+  "premakeAction": "gmake2"
+}

@@ -4,11 +4,12 @@ let fileTreeData = new Map();
 const IGNORE_PATTERNS = [
   'node_modules',
   '.git',
-  'build',
-  'dist',
-  'out',
+  // 'build', // Commented out so build folders are visible
+  // 'dist', // Commented out so dist folders are visible
+  // 'out', // Commented out so out folders are visible
   '.vscode',
   '.idea',
+  '.bakedide', // Hide BakedIDE config folder
   '*.o',
   '*.obj',
   '*.exe',
@@ -36,6 +37,31 @@ async function openFolder() {
     await loadFileTree(result.folderPath);
     const sidebar = document.getElementById('file-tree-sidebar');
     sidebar.classList.add('visible');
+    
+    // Save as last project
+    if (window.electronAPI.saveLastProject) {
+      await window.electronAPI.saveLastProject(result.folderPath);
+    }
+  }
+}
+
+// Load last project on startup
+async function loadLastProject() {
+  if (window.electronAPI.loadLastProject) {
+    const result = await window.electronAPI.loadLastProject();
+    if (result.success && result.projectPath) {
+      currentProjectPath = result.projectPath;
+      await loadFileTree(result.projectPath);
+      const sidebar = document.getElementById('file-tree-sidebar');
+      if (sidebar) {
+        sidebar.classList.add('visible');
+      }
+      
+      // Load build config for the restored project
+      if (window.buildSystemAPI && window.buildSystemAPI.loadBuildConfig) {
+        setTimeout(() => window.buildSystemAPI.loadBuildConfig(), 500);
+      }
+    }
   }
 }
 
@@ -611,10 +637,32 @@ if (document.readyState === 'loading') {
   setupSidebarResizer();
 }
 
+// Setup refresh button
+function setupFileTreeRefresh() {
+  const refreshBtn = document.getElementById('file-tree-refresh');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (currentProjectPath) {
+        await refreshFileTree();
+      }
+    });
+  }
+}
+
 window.fileTreeAPI = {
   openFolder,
   loadFileTree,
   openFileFromTree,
-  refreshFileTree
+  refreshFileTree,
+  getCurrentProjectPath: () => currentProjectPath,
+  loadLastProject
 };
+
+// Initialize refresh button when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupFileTreeRefresh);
+} else {
+  setupFileTreeRefresh();
+}
 

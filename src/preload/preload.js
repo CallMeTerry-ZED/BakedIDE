@@ -31,5 +31,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadTheme: () => ipcRenderer.invoke('theme:load'),
   
   // App operations
-  quit: () => ipcRenderer.invoke('app:quit')
+  quit: () => ipcRenderer.invoke('app:quit'),
+  
+  // Build system operations
+  detectBuildSystem: (projectPath) => ipcRenderer.invoke('build:detect', projectPath),
+  getBuildConfig: (projectPath) => ipcRenderer.invoke('build:getConfig', projectPath),
+  saveBuildConfig: (projectPath, config) => ipcRenderer.invoke('build:saveConfig', projectPath, config),
+  checkBuildTool: (tool) => ipcRenderer.invoke('build:checkTool', tool),
+  checkCmakeGenerators: () => ipcRenderer.invoke('build:checkCmakeGenerators'),
+  executeBuild: (projectPath, config, action) => ipcRenderer.invoke('build:execute', projectPath, config, action),
+  cancelBuild: () => ipcRenderer.invoke('build:cancel'),
+  
+  // Listen for build output
+  onBuildOutput: (callback) => {
+    ipcRenderer.on('build:output', (event, data) => {
+      callback(event, data);
+    });
+  },
+  removeBuildOutputListener: () => {
+    ipcRenderer.removeAllListeners('build:output');
+  },
+  
+  // Session management
+  saveLastProject: (projectPath) => ipcRenderer.invoke('session:saveLastProject', projectPath),
+  loadLastProject: () => ipcRenderer.invoke('session:loadLastProject')
 });

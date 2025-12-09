@@ -4,6 +4,7 @@ let activeEditor = null;
 let activeFilePath = null;
 let fileTabs = []; // Array of { filePath, fileName, editor }
 
+
 // Expose editor functions globally for fileTree.js
 window.editorAPI = {
   createEditorTab: null,
@@ -57,15 +58,53 @@ async function loadTheme() {
 }
 
 
-function initializeApp() {
+async function initializeApp() {
   setupMenus();
   setupKeyboardShortcuts();
   setupBottomPanel();
-  createNewFile();
+  
+  // MutationObserver removed - visibility-based CSS preserves content naturally
   
   // Expose editor functions for fileTree.js
   window.editorAPI.createEditorTab = createEditorTab;
   window.editorAPI.setActiveTab = setActiveTab;
+  window.editorAPI.openFileAtLine = openFileAtLine;
+  window.editorAPI.setCursorPosition = (line, column) => {
+    if (activeEditor) {
+      activeEditor.setPosition({ lineNumber: line, column: column || 1 });
+      activeEditor.revealLineInCenter(line);
+    }
+  };
+  
+  // Try to load last project, otherwise create new file
+  if (window.fileTreeAPI && window.fileTreeAPI.loadLastProject) {
+    try {
+      await window.fileTreeAPI.loadLastProject();
+      // If no project was loaded, create a new file
+      if (!window.fileTreeAPI.getCurrentProjectPath()) {
+        createNewFile();
+      }
+    } catch (error) {
+      console.error('Failed to load last project:', error);
+      createNewFile();
+    }
+  } else {
+    // Fallback if fileTreeAPI isn't ready yet
+    setTimeout(async () => {
+      if (window.fileTreeAPI && window.fileTreeAPI.loadLastProject) {
+        try {
+          await window.fileTreeAPI.loadLastProject();
+          if (!window.fileTreeAPI.getCurrentProjectPath()) {
+            createNewFile();
+          }
+        } catch (error) {
+          createNewFile();
+        }
+      } else {
+        createNewFile();
+      }
+    }, 500);
+  }
 }
 
 let fileMenuDropdown = null;
@@ -95,6 +134,14 @@ function setupMenus() {
     showEditMenu(e.target);
   });
 
+  document.getElementById('build-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (window.buildSystemAPI && window.buildSystemAPI.showBuildMenu) {
+      window.buildSystemAPI.showBuildMenu(e.target);
+    }
+  });
+
   document.getElementById('view-menu').addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -116,6 +163,7 @@ function setupMenus() {
   document.addEventListener('click', (e) => {
     const fileMenu = document.getElementById('file-menu');
     const editMenu = document.getElementById('edit-menu');
+    const buildMenu = document.getElementById('build-menu');
     const viewMenu = document.getElementById('view-menu');
     const windowMenu = document.getElementById('window-menu');
     const helpMenu = document.getElementById('help-menu');
@@ -124,6 +172,13 @@ function setupMenus() {
     }
     if (editMenuDropdown && !editMenuDropdown.contains(e.target) && !editMenu.contains(e.target)) {
       hideEditMenu();
+    }
+    if (buildMenu && window.buildSystemAPI && window.buildSystemAPI.hideBuildMenu) {
+      // Check if build menu dropdown exists (it's managed in buildSystem.js)
+      const buildMenuDropdown = document.getElementById('build-menu-dropdown');
+      if (buildMenuDropdown && !buildMenuDropdown.contains(e.target) && !buildMenu.contains(e.target)) {
+        window.buildSystemAPI.hideBuildMenu();
+      }
     }
     if (viewMenuDropdown && !viewMenuDropdown.contains(e.target) && !viewMenu.contains(e.target)) {
       hideViewMenu();
@@ -162,6 +217,8 @@ function showFileMenu(menuElement) {
     { label: 'New File', action: () => { createNewFile(); hideFileMenu(); }, shortcut: 'Ctrl+N' },
     { label: 'Open File...', action: () => { openFile(); hideFileMenu(); }, shortcut: 'Ctrl+O' },
     { label: 'Open Folder...', action: () => { if (window.fileTreeAPI) window.fileTreeAPI.openFolder(); hideFileMenu(); }, shortcut: 'Ctrl+K Ctrl+O' },
+    { label: '---' },
+    { label: 'Configure Build System...', action: () => { if (window.buildSystemAPI && window.buildSystemAPI.showBuildConfigDialog) window.buildSystemAPI.showBuildConfigDialog(); hideFileMenu(); } },
     { label: '---' },
     { label: 'Save', action: () => { saveCurrentFile(); hideFileMenu(); }, shortcut: 'Ctrl+S' },
     { label: 'Save As...', action: () => { saveFileAs(); hideFileMenu(); }, shortcut: 'Ctrl+Shift+S' },
@@ -599,24 +656,32 @@ function toggleBottomPanel() {
 function setupBottomPanel() {
   // Tab switching
   const panelTabs = document.querySelectorAll('.panel-tab');
+  
   panelTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log('TAB CLICKED:', tab.dataset.tab);
+      
       // Remove active class from all tabs
       panelTabs.forEach(t => t.classList.remove('active'));
       // Add active class to clicked tab
       tab.classList.add('active');
       
-      // Hide all tab contents
+      // Just toggle the active class - both tabs are always rendered
+      // The active one has higher z-index and appears on top
       document.querySelectorAll('.panel-tab-content').forEach(content => {
         content.classList.remove('active');
       });
       
-      // Show selected tab content
       const tabName = tab.dataset.tab;
       const content = document.getElementById(`${tabName}-content`);
       if (content) {
         content.classList.add('active');
       }
+      
+      console.log('Switched to tab:', tabName);
     });
   });
   
@@ -830,6 +895,37 @@ function hideHelpMenu() {
   }
 }
 
+// Open file at specific line and column
+async function openFileAtLine(filePath, line, column = 1) {
+  try {
+    // Open the file
+    const result = await window.electronAPI.readFile(filePath);
+    if (!result.success) {
+      console.error('Failed to read file:', result.error);
+      return;
+    }
+    
+    // Find or create tab for this file
+    let tabInfo = fileTabs.find(t => t.filePath === filePath);
+    if (!tabInfo) {
+      // Create new tab
+      tabInfo = createEditorTab(filePath, result.content);
+    } else {
+      // Switch to existing tab
+      setActiveTab(tabInfo);
+    }
+    
+    // Set cursor position
+    if (tabInfo.editor) {
+      tabInfo.editor.setPosition({ lineNumber: line, column: column });
+      tabInfo.editor.revealLineInCenter(line);
+      tabInfo.editor.focus();
+    }
+  } catch (error) {
+    console.error('Failed to open file at line:', error);
+  }
+}
+
 function setupKeyboardShortcuts() {
   if (typeof monaco !== 'undefined') {
     monaco.editor.addKeybindingRule({
@@ -859,6 +955,46 @@ function setupKeyboardShortcuts() {
   }
   
   document.addEventListener('keydown', (e) => {
+    // Build system shortcuts
+    if (e.ctrlKey && e.shiftKey && e.key === 'B') {
+      e.preventDefault();
+      if (window.buildSystemAPI && window.buildSystemAPI.runBuild) {
+        window.buildSystemAPI.runBuild();
+      }
+      return;
+    }
+    
+    if (e.ctrlKey && e.shiftKey && e.key === 'K') {
+      e.preventDefault();
+      if (window.buildSystemAPI && window.buildSystemAPI.cleanBuild) {
+        window.buildSystemAPI.cleanBuild();
+      }
+      return;
+    }
+    
+    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+      e.preventDefault();
+      if (window.buildSystemAPI && window.buildSystemAPI.rebuild) {
+        window.buildSystemAPI.rebuild();
+      }
+      return;
+    }
+    
+    if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+      e.preventDefault();
+      if (window.buildSystemAPI && window.buildSystemAPI.showBuildConfigDialog) {
+        window.buildSystemAPI.showBuildConfigDialog();
+      }
+      return;
+    }
+    
+    // Cancel build (Ctrl+C when not in editor and build is running)
+    if (e.ctrlKey && e.key === 'c' && !e.target.closest('.monaco-editor')) {
+      if (window.buildSystemAPI && window.buildSystemAPI.cancelBuild && window.buildSystemAPI.isBuilding) {
+        window.buildSystemAPI.cancelBuild();
+      }
+    }
+    
     // File operations
     if (e.ctrlKey && e.key === 'n' && !e.shiftKey) {
       e.preventDefault();
