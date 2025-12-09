@@ -3,9 +3,12 @@ const path = require('path');
 const fs = require('fs').promises;
 const { promisify } = require('util');
 const { spawn } = require('child_process');
+const os = require('os');
+const pty = require('node-pty');
 
 let mainWindow;
 let currentBuildProcess = null;
+let ptyProcess = null;
 
 function createWindow() {
   // Create the browser window
@@ -672,6 +675,90 @@ ipcMain.handle('build:runExecutable', async (event, projectPath, executablePath)
       });
     });
   });
+});
+
+// Terminal IPC handlers - using node-pty for real PTY
+ipcMain.handle('terminal:create', async (event, cwd) => {
+  // Kill existing PTY if any
+  if (ptyProcess) {
+    try {
+      ptyProcess.kill();
+    } catch (e) {
+      // Ignore
+    }
+  }
+  
+  try {
+    const shell = process.platform === 'win32' 
+      ? 'powershell.exe' 
+      : (process.env.SHELL || '/bin/bash');
+    
+    const ptyOptions = {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: cwd || process.env.HOME || os.homedir(),
+      env: process.env
+    };
+    
+    ptyProcess = pty.spawn(shell, [], ptyOptions);
+    
+    // Send PTY output to renderer
+    ptyProcess.onData((data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('terminal:data', data);
+      }
+    });
+    
+    ptyProcess.onExit(({ exitCode, signal }) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('terminal:exit', { exitCode, signal });
+      }
+      ptyProcess = null;
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to create PTY:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('terminal:write', async (event, data) => {
+  if (ptyProcess) {
+    try {
+      ptyProcess.write(data);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: false, error: 'No PTY process' };
+});
+
+ipcMain.handle('terminal:resize', async (event, cols, rows) => {
+  if (ptyProcess) {
+    try {
+      ptyProcess.resize(cols, rows);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: false, error: 'No PTY process' };
+});
+
+ipcMain.handle('terminal:kill', async () => {
+  if (ptyProcess) {
+    try {
+      ptyProcess.kill();
+      ptyProcess = null;
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: true };
 });
 
 // Session management - save/load last project

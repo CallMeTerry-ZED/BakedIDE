@@ -57,5 +57,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Session management
   saveLastProject: (projectPath) => ipcRenderer.invoke('session:saveLastProject', projectPath),
-  loadLastProject: () => ipcRenderer.invoke('session:loadLastProject')
+  loadLastProject: () => ipcRenderer.invoke('session:loadLastProject'),
+  
+  // Terminal
+  terminalCreate: (cwd) => ipcRenderer.invoke('terminal:create', cwd),
+  terminalWrite: (data) => ipcRenderer.invoke('terminal:write', data),
+  terminalResize: (cols, rows) => ipcRenderer.invoke('terminal:resize', cols, rows),
+  terminalKill: () => ipcRenderer.invoke('terminal:kill'),
+  onTerminalData: (callback) => {
+    ipcRenderer.on('terminal:data', (event, data) => callback(data));
+  },
+  onTerminalExit: (callback) => {
+    ipcRenderer.on('terminal:exit', (event, data) => callback(data));
+  },
+  removeTerminalListeners: () => {
+    ipcRenderer.removeAllListeners('terminal:data');
+    ipcRenderer.removeAllListeners('terminal:exit');
+  }
 });

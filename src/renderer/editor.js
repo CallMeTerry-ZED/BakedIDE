@@ -681,6 +681,14 @@ function setupBottomPanel() {
         content.classList.add('active');
       }
       
+      // If switching to terminal, fit and focus it
+      if (tabName === 'terminal' && window.terminalAPI) {
+        setTimeout(() => {
+          window.terminalAPI.fit();
+          window.terminalAPI.focus();
+        }, 50);
+      }
+      
       console.log('Switched to tab:', tabName);
     });
   });

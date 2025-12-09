@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob: 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:;">
     <title>BakedIDE</title>
+    <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
     <style>
         * {
             margin: 0;
@@ -447,33 +448,31 @@
         #terminal-content {
             flex-direction: column;
             height: 100%;
-        }
-
-        #terminal-output {
-            flex: 1;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            padding: 4px 0;
-        }
-
-        #terminal-input-line {
+            width: 100%;
             display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 0;
-            border-top: 1px solid #3e3e42;
         }
 
-        #terminal-input {
-            background-color: transparent;
-            border: none;
-            color: #cccccc;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            outline: none;
+        #terminal-xterm {
             flex: 1;
-            padding: 4px 0;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+        }
+
+        #terminal-xterm .xterm {
+            width: 100% !important;
+            height: 100% !important;
+            padding: 4px;
+        }
+
+        #terminal-xterm .xterm-screen {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        #terminal-xterm .xterm-viewport {
+            overflow-y: auto !important;
+            width: 100% !important;
         }
 
         #build-output-content {
@@ -550,11 +549,7 @@
                     </div>
                     <div id="panel-content">
                         <div class="panel-tab-content active" id="terminal-content">
-                            <div id="terminal-output"></div>
-                            <div id="terminal-input-line">
-                                <span style="color: #39FF14;">$</span>
-                                <input type="text" id="terminal-input" placeholder="Type commands here..." />
-                            </div>
+                            <div id="terminal-xterm"></div>
                         </div>
                         <div class="panel-tab-content" id="build-output-content">
                             <div id="build-output-text">Build output will appear here...</div>
@@ -581,10 +576,15 @@
         </div>
     </div>
 
+    <!-- Load xterm.js BEFORE Monaco to avoid AMD loader conflicts -->
+    <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+    <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    
     <!-- Load Monaco Editor -->
     <script src="../../node_modules/monaco-editor/min/vs/loader.js"></script>
     <script src="./fileTree.js"></script>
     <script src="./buildSystem.js"></script>
     <script src="./editor.js"></script>
+    <script src="./terminal.js"></script>
 </body>
 </html>
