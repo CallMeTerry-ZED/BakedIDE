@@ -63,6 +63,11 @@ async function initializeApp() {
   setupKeyboardShortcuts();
   setupBottomPanel();
   
+  // Initialize settings
+  if (window.settingsAPI && window.settingsAPI.init) {
+    await window.settingsAPI.init();
+  }
+  
   // MutationObserver removed - visibility-based CSS preserves content naturally
   
   // Expose editor functions for fileTree.js
@@ -315,6 +320,8 @@ function showEditMenu(menuElement) {
     { label: 'Find in Files', action: () => { if (window.searchAPI) window.searchAPI.showFindInFiles(); hideEditMenu(); }, shortcut: 'Ctrl+Shift+F', enabled: () => true },
     { label: '---' },
     { label: 'Go to File...', action: () => { if (window.searchAPI) window.searchAPI.showFuzzyFinder(); hideEditMenu(); }, shortcut: 'Ctrl+P', enabled: () => true },
+    { label: '---' },
+    { label: 'Settings', action: () => { if (window.settingsAPI) window.settingsAPI.open(); hideEditMenu(); }, shortcut: 'Ctrl+,', enabled: () => true },
   ];
   
   menuItems.forEach(item => {
@@ -1131,6 +1138,11 @@ function createEditorTab(filePath, fileName, content) {
   
   // Track editor
   editors.set(filePath || editorId, editor);
+  
+  // Apply settings to new editor
+  if (window.settingsAPI && window.settingsAPI.applyToEditor) {
+    window.settingsAPI.applyToEditor(editor);
+  }
   
   // Add to tabs
   const tabInfo = {

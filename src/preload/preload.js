@@ -75,6 +75,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('terminal:exit');
   },
   
+  // Settings
+  loadSettings: () => ipcRenderer.invoke('settings:load'),
+  saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
+  getDefaultSettings: () => ipcRenderer.invoke('settings:getDefaults'),
+  resetSettings: () => ipcRenderer.invoke('settings:reset'),
+  
   // Git operations
   gitIsRepo: (projectPath) => ipcRenderer.invoke('git:isRepo', projectPath),
   gitStatus: (projectPath) => ipcRenderer.invoke('git:status', projectPath),

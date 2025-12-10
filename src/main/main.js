@@ -948,6 +948,94 @@ ipcMain.handle('git:log', async (event, projectPath, count = 20) => {
   return { success: true, commits };
 });
 
+// Settings management
+const settingsFilePath = path.join(app.getPath('userData'), 'settings.json');
+
+const defaultSettings = {
+  editor: {
+    fontSize: 14,
+    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+    tabSize: 4,
+    insertSpaces: true,
+    wordWrap: 'off',
+    lineNumbers: 'on',
+    minimap: false,
+    cursorBlinking: 'blink',
+    cursorStyle: 'line',
+    renderWhitespace: 'none',
+    bracketPairColorization: true
+  },
+  appearance: {
+    theme: 'baked-dark',
+    uiScale: 100
+  },
+  files: {
+    autoSave: 'off',  // 'off', 'afterDelay', 'onFocusChange'
+    autoSaveDelay: 1000,
+    trimTrailingWhitespace: false,
+    insertFinalNewline: true
+  },
+  terminal: {
+    fontSize: 14,
+    fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace"
+  }
+};
+
+async function loadSettings() {
+  try {
+    const content = await fs.readFile(settingsFilePath, 'utf-8');
+    const userSettings = JSON.parse(content);
+    // Deep merge with defaults
+    return deepMerge(defaultSettings, userSettings);
+  } catch (error) {
+    // Return defaults if file doesn't exist
+    return { ...defaultSettings };
+  }
+}
+
+async function saveSettings(settings) {
+  try {
+    await fs.writeFile(settingsFilePath, JSON.stringify(settings, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const key in source) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      result[key] = deepMerge(target[key] || {}, source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
+
+ipcMain.handle('settings:load', async () => {
+  const settings = await loadSettings();
+  return { success: true, settings };
+});
+
+ipcMain.handle('settings:save', async (event, settings) => {
+  return await saveSettings(settings);
+});
+
+ipcMain.handle('settings:getDefaults', async () => {
+  return { success: true, settings: defaultSettings };
+});
+
+ipcMain.handle('settings:reset', async () => {
+  try {
+    await fs.unlink(settingsFilePath);
+    return { success: true, settings: defaultSettings };
+  } catch (error) {
+    return { success: true, settings: defaultSettings };
+  }
+});
+
 // Session management - save/load last project
 const sessionFilePath = path.join(app.getPath('userData'), 'session.json');
 

@@ -906,6 +906,212 @@
             text-align: center;
             padding: 20px;
         }
+
+        /* Settings Dialog */
+        #settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10003;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #settings-overlay.visible {
+            display: flex;
+        }
+
+        #settings-dialog {
+            width: 700px;
+            max-width: 90vw;
+            max-height: 80vh;
+            background-color: #252526;
+            border: 1px solid #3e3e42;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #3e3e42;
+            background-color: #2d2d30;
+        }
+
+        #settings-header h2 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 500;
+            color: #cccccc;
+        }
+
+        #settings-close {
+            background: none;
+            border: none;
+            color: #cccccc;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        #settings-close:hover {
+            background-color: #3e3e42;
+        }
+
+        #settings-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #settings-sidebar {
+            width: 180px;
+            background-color: #1e1e1e;
+            border-right: 1px solid #3e3e42;
+            padding: 8px 0;
+        }
+
+        .settings-nav-item {
+            padding: 10px 20px;
+            color: #cccccc;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-nav-item:hover {
+            background-color: #2a2d2e;
+        }
+
+        .settings-nav-item.active {
+            background-color: #094771;
+        }
+
+        #settings-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+
+        .settings-section h3 {
+            margin: 0 0 16px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #cccccc;
+            border-bottom: 1px solid #3e3e42;
+            padding-bottom: 8px;
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .settings-label {
+            font-size: 13px;
+            color: #cccccc;
+        }
+
+        .settings-label small {
+            display: block;
+            color: #808080;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .settings-input {
+            background-color: #3c3c3c;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            color: #cccccc;
+            padding: 6px 10px;
+            font-size: 13px;
+            min-width: 150px;
+        }
+
+        .settings-input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        .settings-select {
+            background-color: #3c3c3c;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            color: #cccccc;
+            padding: 6px 10px;
+            font-size: 13px;
+            min-width: 150px;
+            cursor: pointer;
+        }
+
+        .settings-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #007acc;
+        }
+
+        #settings-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 16px 20px;
+            border-top: 1px solid #3e3e42;
+            background-color: #2d2d30;
+        }
+
+        .settings-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .settings-btn-primary {
+            background-color: #0e639c;
+            color: white;
+        }
+
+        .settings-btn-primary:hover {
+            background-color: #1177bb;
+        }
+
+        .settings-btn-secondary {
+            background-color: #3c3c3c;
+            color: #cccccc;
+        }
+
+        .settings-btn-secondary:hover {
+            background-color: #4a4a4a;
+        }
     </style>
 </head>
 <body>
@@ -1018,6 +1224,170 @@
         </div>
     </div>
 
+    <!-- Settings Dialog -->
+    <div id="settings-overlay">
+        <div id="settings-dialog">
+            <div id="settings-header">
+                <h2>⚙️ Settings</h2>
+                <button id="settings-close">×</button>
+            </div>
+            <div id="settings-body">
+                <div id="settings-sidebar">
+                    <div class="settings-nav-item active" data-section="editor">📝 Editor</div>
+                    <div class="settings-nav-item" data-section="appearance">🎨 Appearance</div>
+                    <div class="settings-nav-item" data-section="files">📁 Files</div>
+                    <div class="settings-nav-item" data-section="terminal">💻 Terminal</div>
+                </div>
+                <div id="settings-content">
+                    <div class="settings-section active" id="settings-editor">
+                        <h3>Editor</h3>
+                        <div class="settings-group">
+                            <div class="settings-row">
+                                <label class="settings-label">Font Size<small>Controls the font size in pixels</small></label>
+                                <input type="number" class="settings-input" id="setting-fontSize" min="8" max="32" value="14" />
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Font Family<small>Controls the font family</small></label>
+                                <select class="settings-select" id="setting-fontFamily">
+                                    <option value="'Cascadia Code', 'Fira Code', 'Consolas', monospace">Cascadia Code</option>
+                                    <option value="'Fira Code', 'Consolas', monospace">Fira Code</option>
+                                    <option value="'JetBrains Mono', 'Consolas', monospace">JetBrains Mono</option>
+                                    <option value="'Source Code Pro', 'Consolas', monospace">Source Code Pro</option>
+                                    <option value="'Consolas', monospace">Consolas</option>
+                                    <option value="monospace">System Monospace</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Tab Size<small>The number of spaces a tab equals</small></label>
+                                <select class="settings-select" id="setting-tabSize">
+                                    <option value="2">2</option>
+                                    <option value="4" selected>4</option>
+                                    <option value="8">8</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Insert Spaces<small>Insert spaces when pressing Tab</small></label>
+                                <input type="checkbox" class="settings-checkbox" id="setting-insertSpaces" checked />
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Word Wrap<small>Controls how lines should wrap</small></label>
+                                <select class="settings-select" id="setting-wordWrap">
+                                    <option value="off" selected>Off</option>
+                                    <option value="on">On</option>
+                                    <option value="wordWrapColumn">At Column</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Line Numbers<small>Controls line number visibility</small></label>
+                                <select class="settings-select" id="setting-lineNumbers">
+                                    <option value="on" selected>On</option>
+                                    <option value="off">Off</option>
+                                    <option value="relative">Relative</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Minimap<small>Show code minimap on the right</small></label>
+                                <input type="checkbox" class="settings-checkbox" id="setting-minimap" />
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Cursor Style<small>Controls the cursor style</small></label>
+                                <select class="settings-select" id="setting-cursorStyle">
+                                    <option value="line" selected>Line</option>
+                                    <option value="block">Block</option>
+                                    <option value="underline">Underline</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Render Whitespace<small>Controls rendering of whitespace</small></label>
+                                <select class="settings-select" id="setting-renderWhitespace">
+                                    <option value="none" selected>None</option>
+                                    <option value="boundary">Boundary</option>
+                                    <option value="selection">Selection</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Bracket Colorization<small>Enable bracket pair colorization</small></label>
+                                <input type="checkbox" class="settings-checkbox" id="setting-bracketPairColorization" checked />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section" id="settings-appearance">
+                        <h3>Appearance</h3>
+                        <div class="settings-group">
+                            <div class="settings-row">
+                                <label class="settings-label">Theme<small>Select the color theme</small></label>
+                                <select class="settings-select" id="setting-theme">
+                                    <option value="baked-dark" selected>Baked Dark</option>
+                                    <option value="vs-dark">VS Dark</option>
+                                    <option value="vs">VS Light</option>
+                                    <option value="hc-black">High Contrast</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">UI Scale<small>Scale the entire UI (requires restart)</small></label>
+                                <select class="settings-select" id="setting-uiScale">
+                                    <option value="80">80%</option>
+                                    <option value="90">90%</option>
+                                    <option value="100" selected>100%</option>
+                                    <option value="110">110%</option>
+                                    <option value="120">120%</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section" id="settings-files">
+                        <h3>Files</h3>
+                        <div class="settings-group">
+                            <div class="settings-row">
+                                <label class="settings-label">Auto Save<small>Controls auto save behavior</small></label>
+                                <select class="settings-select" id="setting-autoSave">
+                                    <option value="off" selected>Off</option>
+                                    <option value="afterDelay">After Delay</option>
+                                    <option value="onFocusChange">On Focus Change</option>
+                                </select>
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Auto Save Delay<small>Delay in ms after which files are saved</small></label>
+                                <input type="number" class="settings-input" id="setting-autoSaveDelay" min="100" max="10000" value="1000" />
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Trim Trailing Whitespace<small>Remove trailing whitespace on save</small></label>
+                                <input type="checkbox" class="settings-checkbox" id="setting-trimTrailingWhitespace" />
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Insert Final Newline<small>Insert a final newline at end of file</small></label>
+                                <input type="checkbox" class="settings-checkbox" id="setting-insertFinalNewline" checked />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section" id="settings-terminal">
+                        <h3>Terminal</h3>
+                        <div class="settings-group">
+                            <div class="settings-row">
+                                <label class="settings-label">Font Size<small>Controls terminal font size</small></label>
+                                <input type="number" class="settings-input" id="setting-terminalFontSize" min="8" max="32" value="14" />
+                            </div>
+                            <div class="settings-row">
+                                <label class="settings-label">Font Family<small>Controls terminal font family</small></label>
+                                <select class="settings-select" id="setting-terminalFontFamily">
+                                    <option value="'Cascadia Code', 'Fira Code', 'Consolas', monospace">Cascadia Code</option>
+                                    <option value="'Fira Code', 'Consolas', monospace">Fira Code</option>
+                                    <option value="'JetBrains Mono', 'Consolas', monospace">JetBrains Mono</option>
+                                    <option value="monospace">System Monospace</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="settings-footer">
+                <button class="settings-btn settings-btn-secondary" id="settings-reset">Reset to Defaults</button>
+                <button class="settings-btn settings-btn-primary" id="settings-save">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Fuzzy Finder / Quick Open (Ctrl+P) -->
     <div id="fuzzy-finder">
         <input type="text" id="fuzzy-finder-input" placeholder="Search files by name..." autocomplete="off" />
@@ -1046,6 +1416,7 @@
     <script src="../../node_modules/monaco-editor/min/vs/loader.js"></script>
     <script src="./fileTree.js"></script>
     <script src="./buildSystem.js"></script>
+    <script src="./settings.js"></script>
     <script src="./search.js"></script>
     <script src="./git.js"></script>
     <script src="./editor.js"></script>
