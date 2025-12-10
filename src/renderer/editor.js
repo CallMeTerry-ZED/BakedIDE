@@ -68,6 +68,11 @@ async function initializeApp() {
     await window.settingsAPI.init();
   }
   
+  // Initialize LSP
+  if (window.lspAPI && window.lspAPI.init) {
+    window.lspAPI.init();
+  }
+  
   // MutationObserver removed - visibility-based CSS preserves content naturally
   
   // Expose editor functions for fileTree.js
@@ -1165,6 +1170,18 @@ function createEditorTab(filePath, fileName, content) {
     updateTabModified(tabInfo, true);
   });
   
+  // Initialize LSP for this file (if available)
+  if (window.lspAPI && window.lspAPI.initForFile && filePath) {
+    window.lspAPI.initForFile(filePath, editor).then(serverInfo => {
+      if (serverInfo) {
+        tabInfo.lspServer = serverInfo;
+        console.log(`[LSP] Connected to ${serverInfo.language} server for: ${fileName}`);
+      }
+    }).catch(err => {
+      console.warn('[LSP] Failed to initialize:', err);
+    });
+  }
+  
   console.log(`Editor created for: ${fileName}`);
 }
 
@@ -1312,6 +1329,11 @@ function closeTab(tabInfo) {
     }
   }
   
+  // Notify LSP about document close
+  if (window.lspAPI && window.lspAPI.notifyClosed && tabInfo.filePath) {
+    window.lspAPI.notifyClosed(tabInfo.filePath);
+  }
+  
   // Remove editor
   tabInfo.editor.dispose();
   editors.delete(tabInfo.filePath || tabInfo.editorId);
@@ -1382,6 +1404,11 @@ async function saveFile(tabInfo) {
   if (result.success) {
     updateTabModified(tabInfo, false);
     updateStatusBar(tabInfo);
+    
+    // Notify LSP about save
+    if (window.lspAPI && window.lspAPI.notifySaved && tabInfo.filePath) {
+      window.lspAPI.notifySaved(tabInfo.filePath, content);
+    }
   } else {
     alert(`Error saving file: ${result.error}`);
   }

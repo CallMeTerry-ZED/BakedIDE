@@ -5,6 +5,7 @@ const { promisify } = require('util');
 const { spawn } = require('child_process');
 const os = require('os');
 const pty = require('node-pty');
+const { setupLSPHandlers, shutdownAll: shutdownLSP } = require('./lspManager');
 
 let mainWindow;
 let currentBuildProcess = null;
@@ -1088,6 +1089,9 @@ ipcMain.handle('session:loadLastProject', async () => {
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
   createWindow();
+  
+  // Setup LSP handlers after window is created
+  setupLSPHandlers(mainWindow);
 
   app.on('activate', () => {
     // On macOS, re-create window when dock icon is clicked
@@ -1099,6 +1103,9 @@ app.whenReady().then(() => {
 
 // Quit when all windows are closed
 app.on('window-all-closed', () => {
+  // Shutdown all LSP servers
+  shutdownLSP();
+  
   // On macOS, keep app running even when all windows are closed
   if (process.platform !== 'darwin') {
     app.quit();

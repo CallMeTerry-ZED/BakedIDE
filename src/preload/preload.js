@@ -75,6 +75,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('terminal:exit');
   },
   
+  // LSP (Language Server Protocol)
+  lspInitialize: (language, workspacePath) => ipcRenderer.invoke('lsp:initialize', { language, workspacePath }),
+  lspGetLanguage: (filePath) => ipcRenderer.invoke('lsp:getLanguage', filePath),
+  lspDidOpen: (serverId, uri, languageId, version, text) => ipcRenderer.invoke('lsp:didOpen', { serverId, uri, languageId, version, text }),
+  lspDidChange: (serverId, uri, version, changes) => ipcRenderer.invoke('lsp:didChange', { serverId, uri, version, changes }),
+  lspDidClose: (serverId, uri) => ipcRenderer.invoke('lsp:didClose', { serverId, uri }),
+  lspDidSave: (serverId, uri, text) => ipcRenderer.invoke('lsp:didSave', { serverId, uri, text }),
+  lspCompletion: (serverId, uri, position) => ipcRenderer.invoke('lsp:completion', { serverId, uri, position }),
+  lspHover: (serverId, uri, position) => ipcRenderer.invoke('lsp:hover', { serverId, uri, position }),
+  lspDefinition: (serverId, uri, position) => ipcRenderer.invoke('lsp:definition', { serverId, uri, position }),
+  lspReferences: (serverId, uri, position) => ipcRenderer.invoke('lsp:references', { serverId, uri, position }),
+  lspSignatureHelp: (serverId, uri, position) => ipcRenderer.invoke('lsp:signatureHelp', { serverId, uri, position }),
+  lspDocumentSymbols: (serverId, uri) => ipcRenderer.invoke('lsp:documentSymbols', { serverId, uri }),
+  lspShutdown: (serverId) => ipcRenderer.invoke('lsp:shutdown', serverId),
+  lspAvailableServers: () => ipcRenderer.invoke('lsp:availableServers'),
+  onLspDiagnostics: (callback) => ipcRenderer.on('lsp:diagnostics', (event, data) => callback(data)),
+  removeLspListeners: () => ipcRenderer.removeAllListeners('lsp:diagnostics'),
+  
   // Settings
   loadSettings: () => ipcRenderer.invoke('settings:load'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
