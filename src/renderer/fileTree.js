@@ -42,6 +42,11 @@ async function openFolder() {
     if (window.electronAPI.saveLastProject) {
       await window.electronAPI.saveLastProject(result.folderPath);
     }
+    
+    // Check if this folder is a git repo
+    if (window.gitAPI && window.gitAPI.checkRepo) {
+      await window.gitAPI.checkRepo(result.folderPath);
+    }
   }
 }
 
@@ -60,6 +65,11 @@ async function loadLastProject() {
       // Load build config for the restored project
       if (window.buildSystemAPI && window.buildSystemAPI.loadBuildConfig) {
         setTimeout(() => window.buildSystemAPI.loadBuildConfig(), 500);
+      }
+      
+      // Check if this folder is a git repo
+      if (window.gitAPI && window.gitAPI.checkRepo) {
+        setTimeout(() => window.gitAPI.checkRepo(result.projectPath), 600);
       }
     }
   }

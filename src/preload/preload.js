@@ -73,5 +73,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeTerminalListeners: () => {
     ipcRenderer.removeAllListeners('terminal:data');
     ipcRenderer.removeAllListeners('terminal:exit');
-  }
+  },
+  
+  // Git operations
+  gitIsRepo: (projectPath) => ipcRenderer.invoke('git:isRepo', projectPath),
+  gitStatus: (projectPath) => ipcRenderer.invoke('git:status', projectPath),
+  gitBranch: (projectPath) => ipcRenderer.invoke('git:branch', projectPath),
+  gitBranches: (projectPath) => ipcRenderer.invoke('git:branches', projectPath),
+  gitAdd: (projectPath, files) => ipcRenderer.invoke('git:add', projectPath, files),
+  gitUnstage: (projectPath, files) => ipcRenderer.invoke('git:unstage', projectPath, files),
+  gitAddAll: (projectPath) => ipcRenderer.invoke('git:addAll', projectPath),
+  gitCommit: (projectPath, message) => ipcRenderer.invoke('git:commit', projectPath, message),
+  gitPush: (projectPath) => ipcRenderer.invoke('git:push', projectPath),
+  gitPull: (projectPath) => ipcRenderer.invoke('git:pull', projectPath),
+  gitCheckout: (projectPath, branch) => ipcRenderer.invoke('git:checkout', projectPath, branch),
+  gitDiff: (projectPath, filePath, staged) => ipcRenderer.invoke('git:diff', projectPath, filePath, staged),
+  gitDiscard: (projectPath, filePath) => ipcRenderer.invoke('git:discard', projectPath, filePath),
+  gitLog: (projectPath, count) => ipcRenderer.invoke('git:log', projectPath, count)
 });

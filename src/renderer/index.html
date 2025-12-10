@@ -442,14 +442,28 @@
         }
 
         .panel-tab-content.active {
-            z-index: 1;
+            z-index: 10;
         }
 
         #terminal-content {
             flex-direction: column;
             height: 100%;
             width: 100%;
-            display: flex;
+            background-color: #1e1e1e;
+        }
+        
+        #build-output-content {
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1e1e1e;
+        }
+        
+        #git-content {
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1e1e1e;
         }
 
         #terminal-xterm {
@@ -473,12 +487,6 @@
         #terminal-xterm .xterm-viewport {
             overflow-y: auto !important;
             width: 100% !important;
-        }
-
-        #build-output-content {
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
         }
 
         #build-output-text {
@@ -717,6 +725,187 @@
             font-size: 12px;
             color: #808080;
         }
+
+        /* Git / Source Control Panel */
+        #git-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid #3e3e42;
+            background-color: #252526;
+        }
+
+        #git-branch-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        #git-branch-name {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        #git-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .git-action-btn {
+            background: #3c3c3c;
+            border: 1px solid #3e3e42;
+            color: #cccccc;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .git-action-btn:hover {
+            background: #4a4a4a;
+        }
+
+        .git-action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #git-commit-section {
+            padding: 8px 12px;
+            border-bottom: 1px solid #3e3e42;
+        }
+
+        #git-commit-input {
+            width: 100%;
+            padding: 8px;
+            background-color: #3c3c3c;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            color: #cccccc;
+            font-size: 12px;
+            resize: none;
+            min-height: 60px;
+            box-sizing: border-box;
+        }
+
+        #git-commit-input:focus {
+            border-color: #007acc;
+            outline: none;
+        }
+
+        #git-commit-btn {
+            margin-top: 8px;
+            width: 100%;
+            padding: 6px;
+            background-color: #0e639c;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        #git-commit-btn:hover {
+            background-color: #1177bb;
+        }
+
+        #git-commit-btn:disabled {
+            background-color: #3c3c3c;
+            cursor: not-allowed;
+        }
+
+        #git-changes {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .git-section-header {
+            padding: 6px 12px;
+            background-color: #2d2d30;
+            font-size: 11px;
+            font-weight: bold;
+            color: #cccccc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .git-section-count {
+            background-color: #4d4d4d;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+
+        .git-file-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 12px 4px 24px;
+            font-size: 12px;
+            cursor: pointer;
+            gap: 8px;
+        }
+
+        .git-file-item:hover {
+            background-color: #2a2d2e;
+        }
+
+        .git-file-status {
+            width: 16px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .git-file-status.modified { color: #e2c08d; }
+        .git-file-status.added { color: #89d185; }
+        .git-file-status.deleted { color: #f14c4c; }
+        .git-file-status.untracked { color: #73c991; }
+
+        .git-file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .git-file-actions {
+            display: none;
+            gap: 4px;
+        }
+
+        .git-file-item:hover .git-file-actions {
+            display: flex;
+        }
+
+        .git-file-action {
+            padding: 2px 6px;
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 2px;
+        }
+
+        .git-file-action:hover {
+            background-color: #4a4a4a;
+        }
+
+        #git-not-repo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #808080;
+            font-size: 13px;
+            text-align: center;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -759,7 +948,8 @@
                     <div id="panel-resizer"></div>
                     <div id="panel-tabs">
                         <div class="panel-tab active" data-tab="terminal">Terminal</div>
-                        <div class="panel-tab" data-tab="build">Build Output</div>
+                        <div class="panel-tab" data-tab="build-output">Build Output</div>
+                        <div class="panel-tab" data-tab="git">Source Control</div>
                     </div>
                     <div id="panel-content">
                         <div class="panel-tab-content active" id="terminal-content">
@@ -767,6 +957,44 @@
                         </div>
                         <div class="panel-tab-content" id="build-output-content">
                             <div id="build-output-text">Build output will appear here...</div>
+                        </div>
+                        <div class="panel-tab-content" id="git-content">
+                            <div id="git-not-repo">
+                                <span>📁 Open a folder with a Git repository</span>
+                            </div>
+                            <div id="git-panel" style="display: none; flex-direction: column; height: 100%;">
+                                <div id="git-header">
+                                    <div id="git-branch-info">
+                                        <span>🌿</span>
+                                        <span id="git-branch-name">main</span>
+                                    </div>
+                                    <div id="git-actions">
+                                        <button class="git-action-btn" id="git-refresh-btn" title="Refresh">🔄</button>
+                                        <button class="git-action-btn" id="git-pull-btn" title="Pull">⬇ Pull</button>
+                                        <button class="git-action-btn" id="git-push-btn" title="Push">⬆ Push</button>
+                                    </div>
+                                </div>
+                                <div id="git-commit-section">
+                                    <textarea id="git-commit-input" placeholder="Commit message..."></textarea>
+                                    <button id="git-commit-btn" disabled>✓ Commit</button>
+                                </div>
+                                <div id="git-changes">
+                                    <div class="git-section" id="git-staged-section">
+                                        <div class="git-section-header">
+                                            <span>Staged Changes</span>
+                                            <span class="git-section-count" id="git-staged-count">0</span>
+                                        </div>
+                                        <div id="git-staged-files"></div>
+                                    </div>
+                                    <div class="git-section" id="git-unstaged-section">
+                                        <div class="git-section-header">
+                                            <span>Changes</span>
+                                            <span class="git-section-count" id="git-unstaged-count">0</span>
+                                        </div>
+                                        <div id="git-unstaged-files"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -819,6 +1047,7 @@
     <script src="./fileTree.js"></script>
     <script src="./buildSystem.js"></script>
     <script src="./search.js"></script>
+    <script src="./git.js"></script>
     <script src="./editor.js"></script>
     <script src="./terminal.js"></script>
 </body>

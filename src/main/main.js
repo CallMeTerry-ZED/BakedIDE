@@ -761,6 +761,193 @@ ipcMain.handle('terminal:kill', async () => {
   return { success: true };
 });
 
+// Git IPC handlers
+function runGitCommand(cwd, args) {
+  return new Promise((resolve) => {
+    const git = spawn('git', args, { cwd, env: process.env });
+    let stdout = '';
+    let stderr = '';
+    
+    git.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    
+    git.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    
+    git.on('close', (code) => {
+      resolve({
+        success: code === 0,
+        stdout: stdout.trimEnd(),  // Only trim trailing whitespace, preserve leading spaces
+        stderr: stderr.trim(),
+        exitCode: code
+      });
+    });
+    
+    git.on('error', (error) => {
+      resolve({
+        success: false,
+        stdout: '',
+        stderr: error.message,
+        exitCode: -1
+      });
+    });
+  });
+}
+
+// Check if directory is a git repo
+ipcMain.handle('git:isRepo', async (event, projectPath) => {
+  const result = await runGitCommand(projectPath, ['rev-parse', '--is-inside-work-tree']);
+  return { success: result.success && result.stdout === 'true', isRepo: result.stdout === 'true' };
+});
+
+// Get git status
+ipcMain.handle('git:status', async (event, projectPath) => {
+  const result = await runGitCommand(projectPath, ['status', '--porcelain', '-u']);
+  if (!result.success) {
+    return { success: false, error: result.stderr };
+  }
+  
+  const files = [];
+  const lines = result.stdout.split('\n').filter(line => line.length >= 4);
+  
+  for (const line of lines) {
+    // Git status format: XY PATH
+    // X = index status (staged)
+    // Y = work tree status
+    // Position 0-1 = status, position 2 = space, position 3+ = path
+    const indexStatus = line.charAt(0);
+    const workTreeStatus = line.charAt(1);
+    const filePath = line.substring(3);
+    
+    // Determine file state
+    let state = 'untracked';
+    if (indexStatus === 'M' || workTreeStatus === 'M') state = 'modified';
+    else if (indexStatus === 'A') state = 'added';
+    else if (indexStatus === 'D' || workTreeStatus === 'D') state = 'deleted';
+    else if (indexStatus === 'R') state = 'renamed';
+    else if (indexStatus === '?' && workTreeStatus === '?') state = 'untracked';
+    
+    // File is staged if index status is not space or ?
+    const staged = indexStatus !== ' ' && indexStatus !== '?';
+    
+    files.push({ path: filePath, status: state, staged, statusCode: indexStatus + workTreeStatus });
+  }
+  
+  return { success: true, files };
+});
+
+// Get current branch
+ipcMain.handle('git:branch', async (event, projectPath) => {
+  const result = await runGitCommand(projectPath, ['branch', '--show-current']);
+  if (!result.success) {
+    return { success: false, error: result.stderr };
+  }
+  return { success: true, branch: result.stdout || 'HEAD detached' };
+});
+
+// Get all branches
+ipcMain.handle('git:branches', async (event, projectPath) => {
+  const result = await runGitCommand(projectPath, ['branch', '-a']);
+  if (!result.success) {
+    return { success: false, error: result.stderr };
+  }
+  
+  const branches = result.stdout.split('\n')
+    .map(b => b.trim())
+    .filter(b => b)
+    .map(b => ({
+      name: b.replace(/^\*\s*/, '').replace(/^remotes\//, ''),
+      current: b.startsWith('*'),
+      remote: b.includes('remotes/')
+    }));
+  
+  return { success: true, branches };
+});
+
+// Stage file(s)
+ipcMain.handle('git:add', async (event, projectPath, files) => {
+  const fileArgs = Array.isArray(files) ? files : [files];
+  const result = await runGitCommand(projectPath, ['add', '--', ...fileArgs]);
+  return { success: result.success, error: result.stderr };
+});
+
+// Unstage file(s)
+ipcMain.handle('git:unstage', async (event, projectPath, files) => {
+  const fileArgs = Array.isArray(files) ? files : [files];
+  const result = await runGitCommand(projectPath, ['reset', 'HEAD', ...fileArgs]);
+  return { success: result.success, error: result.stderr };
+});
+
+// Stage all changes
+ipcMain.handle('git:addAll', async (event, projectPath) => {
+  const result = await runGitCommand(projectPath, ['add', '-A']);
+  return { success: result.success, error: result.stderr };
+});
+
+// Commit
+ipcMain.handle('git:commit', async (event, projectPath, message) => {
+  if (!message || !message.trim()) {
+    return { success: false, error: 'Commit message is required' };
+  }
+  const result = await runGitCommand(projectPath, ['commit', '-m', message]);
+  return { success: result.success, error: result.stderr, output: result.stdout };
+});
+
+// Push
+ipcMain.handle('git:push', async (event, projectPath) => {
+  const result = await runGitCommand(projectPath, ['push']);
+  return { success: result.success, error: result.stderr, output: result.stdout };
+});
+
+// Pull
+ipcMain.handle('git:pull', async (event, projectPath) => {
+  const result = await runGitCommand(projectPath, ['pull']);
+  return { success: result.success, error: result.stderr, output: result.stdout };
+});
+
+// Checkout branch
+ipcMain.handle('git:checkout', async (event, projectPath, branch) => {
+  const result = await runGitCommand(projectPath, ['checkout', branch]);
+  return { success: result.success, error: result.stderr };
+});
+
+// Get diff for a file
+ipcMain.handle('git:diff', async (event, projectPath, filePath, staged) => {
+  const args = staged ? ['diff', '--cached', filePath] : ['diff', filePath];
+  const result = await runGitCommand(projectPath, args);
+  return { success: result.success, diff: result.stdout, error: result.stderr };
+});
+
+// Discard changes to a file
+ipcMain.handle('git:discard', async (event, projectPath, filePath) => {
+  const result = await runGitCommand(projectPath, ['checkout', '--', filePath]);
+  return { success: result.success, error: result.stderr };
+});
+
+// Get recent commits
+ipcMain.handle('git:log', async (event, projectPath, count = 20) => {
+  const result = await runGitCommand(projectPath, [
+    'log', 
+    `--max-count=${count}`,
+    '--pretty=format:%H|%h|%an|%ae|%ar|%s'
+  ]);
+  
+  if (!result.success) {
+    return { success: false, error: result.stderr };
+  }
+  
+  const commits = result.stdout.split('\n')
+    .filter(line => line.trim())
+    .map(line => {
+      const [hash, shortHash, author, email, date, ...msgParts] = line.split('|');
+      return { hash, shortHash, author, email, date, message: msgParts.join('|') };
+    });
+  
+  return { success: true, commits };
+});
+
 // Session management - save/load last project
 const sessionFilePath = path.join(app.getPath('userData'), 'session.json');
 

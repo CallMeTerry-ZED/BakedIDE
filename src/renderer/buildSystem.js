@@ -754,7 +754,7 @@ function switchToBuildOutputTab() {
   }
   
   // Manually switch tabs to ensure content is preserved
-  const buildTab = document.querySelector('.panel-tab[data-tab="build"]');
+  const buildTab = document.querySelector('.panel-tab[data-tab="build-output"]');
   const buildContent = document.getElementById('build-output-content');
   const terminalTab = document.querySelector('.panel-tab[data-tab="terminal"]');
   
